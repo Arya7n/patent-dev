@@ -1,0 +1,52 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# Dependencies
+node_modules/
+.pnpm-store/
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Build / framework
+dist/
+build/
+.next/
+next-env.d.ts
+out/
+.turbo/
+coverage/
+*.tsbuildinfo
+
+# Logs and OS
+*.log
+npm-debug.log*
+pnpm-debug.log*
+.DS_Store
+Thumbs.db
+
+# IDEs
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+
+# Local data
+uploads/
+tmp/
+.cache/
+data/postgres/
+data/redis/
+data/minio/
+
+# Test artifacts
+*.pdf.download
+playwright-report/
+test-results/

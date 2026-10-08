@@ -1,0 +1,2 @@
+pymupdf>=1.26.0
+ocrmypdf>=16.0.0

@@ -1,0 +1,32 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: patent
+      POSTGRES_PASSWORD: patent
+      POSTGRES_DB: patent
+    ports:
+      - "5432:5432"
+    volumes:
+      - patent_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U patent -d patent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Use this only when a local Redis is not already running.
+  # Start with: docker compose --profile bundled-redis up -d
+  redis:
+    profiles: ["bundled-redis"]
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  patent_pg:

@@ -1,0 +1,29 @@
+{
+  "name": "patent-dev",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "predev": "pnpm --filter @patent/shared --filter @patent/db --filter @patent/storage --filter @patent/pipeline build",
+    "dev": "dotenv -e .env -- pnpm --parallel --filter @patent/api --filter @patent/worker --filter @patent/web dev",
+    "dev:web": "pnpm --filter @patent/web dev",
+    "dev:api": "dotenv -e .env -- pnpm --filter @patent/api dev",
+    "dev:worker": "dotenv -e .env -- pnpm --filter @patent/worker dev",
+    "build": "pnpm -r --if-present build",
+    "typecheck": "pnpm -r --if-present typecheck",
+    "test": "pnpm -r --if-present test",
+    "lint": "eslint .",
+    "db:up": "node scripts/compose.mjs up -d",
+    "db:down": "node scripts/compose.mjs down",
+    "db:migrate": "dotenv -e .env -- pnpm --filter @patent/db migrate"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.28.0",
+    "dotenv-cli": "^8.0.0",
+    "eslint": "^9.28.0",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.34.0"
+  }
+}
