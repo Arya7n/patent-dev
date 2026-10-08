@@ -16,7 +16,7 @@ Shared packages (`packages/shared`, `packages/db`, `packages/storage`, `packages
 ## Local setup
 
 1. Copy `.env.example` to `.env` and fill in values. Do not commit `.env`.
-2. Start Postgres with pgvector: `pnpm db:up` (Docker Desktop must be running). Redis is expected at `redis://localhost:6379`.
+2. Start Postgres (pgvector) and Redis 7: `pnpm db:up` (Docker Desktop must be running). Redis is published on port 6380 because BullMQ needs Redis 5 or newer.
 3. Install and migrate:
 
 ```bash
