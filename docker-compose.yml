@@ -15,13 +15,12 @@ services:
       timeout: 5s
       retries: 20
 
-  # Use this only when a local Redis is not already running.
-  # Start with: docker compose --profile bundled-redis up -d
+  # BullMQ needs Redis 5+. Port 6380 avoids an older Redis that may already
+  # own 6379. REDIS_URL should be redis://localhost:6380.
   redis:
-    profiles: ["bundled-redis"]
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "6380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
