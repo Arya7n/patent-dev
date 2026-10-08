@@ -13,7 +13,7 @@
     "dev:worker": "dotenv -e .env -- pnpm --filter @patent/worker dev",
     "build": "pnpm -r --if-present build",
     "typecheck": "pnpm -r --if-present typecheck",
-    "test": "pnpm -r --if-present test",
+    "test": "pnpm --filter @patent/shared --filter @patent/storage build && pnpm -r --if-present test",
     "lint": "eslint .",
     "db:up": "node scripts/compose.mjs up -d",
     "db:down": "node scripts/compose.mjs down",
