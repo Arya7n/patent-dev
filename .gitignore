@@ -19,7 +19,6 @@ __pycache__/
 dist/
 build/
 .next/
-next-env.d.ts
 out/
 .turbo/
 coverage/
