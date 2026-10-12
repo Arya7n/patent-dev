@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { use, useState } from "react";
 import { api } from "@/lib/api";
+import { errorMessage } from "@/lib/jobs";
 import { STATUS_CLASS, type ClaimChart } from "@/lib/types";
 
 export default function ClaimChartPage({ params }: { params: Promise<{ projectId: string }> }) {
@@ -18,6 +19,13 @@ export default function ClaimChartPage({ params }: { params: Promise<{ projectId
       <div className="overflow-auto p-6">
         <h1 className="font-serif text-3xl">Claim chart</h1>
         <p className="mt-2 max-w-3xl text-sm text-stone-600">{data?.disclaimer}</p>
+        {chart.isError ? <p className="mt-4 text-sm text-rose-800">{errorMessage(chart.error, "The claim chart could not be loaded.")}</p> : null}
+        {data && data.elements.length === 0 ? (
+          <p className="mt-6 text-sm text-stone-500">Decompose at least one claim before this chart has rows.</p>
+        ) : null}
+        {data && data.priorArt.length === 0 ? (
+          <p className="mt-2 text-sm text-stone-500">Process a prior-art document to add columns.</p>
+        ) : null}
         <table className="mt-6 w-full border-collapse text-sm">
           <thead>
             <tr>

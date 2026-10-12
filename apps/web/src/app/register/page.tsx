@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 export default function RegisterPage() {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
   return (
     <main className="mx-auto grid min-h-screen max-w-md place-items-center px-6">
       <form
@@ -16,6 +17,7 @@ export default function RegisterPage() {
           event.preventDefault();
           const data = new FormData(event.currentTarget);
           setError(null);
+          setPending(true);
           void api("/auth/register", {
             method: "POST",
             body: JSON.stringify({
@@ -26,7 +28,10 @@ export default function RegisterPage() {
             }),
           })
             .then(() => router.push("/dashboard"))
-            .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Could not create the account"));
+            .catch((reason: unknown) => {
+              setPending(false);
+              setError(reason instanceof Error ? reason.message : "Could not create the account");
+            });
         }}
       >
         <h1 className="font-serif text-3xl">Create a workspace</h1>
@@ -35,7 +40,7 @@ export default function RegisterPage() {
         <label className="mt-4 block text-sm">Email<input name="email" type="email" required className="mt-1 w-full rounded border border-line px-3 py-2" /></label>
         <label className="mt-4 block text-sm">Password<input name="password" type="password" minLength={8} required className="mt-1 w-full rounded border border-line px-3 py-2" /></label>
         {error ? <p className="mt-3 text-sm text-rose-800">{error}</p> : null}
-        <button className="mt-6 rounded bg-pine px-4 py-2 text-sm text-white">Create account</button>
+        <button disabled={pending} className="mt-6 rounded bg-pine px-4 py-2 text-sm text-white">{pending ? "Creating…" : "Create account"}</button>
         <p className="mt-4 text-sm"><Link href="/login" className="underline">Sign in</Link></p>
       </form>
     </main>

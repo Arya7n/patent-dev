@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { errorMessage } from "@/lib/jobs";
+import { formatWhen } from "@/lib/labels";
 import type { Project } from "@/lib/types";
 
 export default function DashboardPage() {
@@ -17,15 +19,33 @@ export default function DashboardPage() {
       <p className="mt-2 max-w-2xl text-sm text-stone-600">
         Projects, documents, and model usage for this organization. Evidence labels stay provisional until an analyst confirms them.
       </p>
-      <div className="mt-6 grid grid-cols-4 gap-3">
+      {projects.isError || usage.isError ? (
+        <p className="mt-4 text-sm text-rose-800">{errorMessage(projects.error ?? usage.error, "Dashboard data could not be loaded.")}</p>
+      ) : null}
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Stat label="Projects" value={projects.data?.length ?? "—"} />
         <Stat label="Documents" value={usage.data?.documents ?? "—"} />
         <Stat label="Model requests" value={usage.data?.requests ?? "—"} />
-        <Stat label="Estimated cost" value={usage.data ? `$${usage.data.estimatedCostUsd.toFixed(4)}` : "—"} />
+        <Stat label="Estimated cost" value={usage.data ? `$${Number(usage.data.estimatedCostUsd).toFixed(4)}` : "—"} />
       </div>
-      <div className="mt-8">
-        <Link href="/projects" className="text-sm underline">Open projects</Link>
+      <div className="mt-8 flex items-center justify-between">
+        <h2 className="font-serif text-2xl">Recent projects</h2>
+        <Link href="/projects" className="text-sm underline">All projects</Link>
       </div>
+      {projects.data?.length === 0 ? <p className="mt-4 text-sm text-stone-500">Create a project to start a matter.</p> : null}
+      <ul className="mt-4 divide-y divide-line rounded border border-line bg-panel">
+        {(projects.data ?? []).slice(0, 6).map((project) => (
+          <li key={project.id}>
+            <Link href={`/projects/${project.id}`} className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-stone-50">
+              <span>
+                <span className="block font-medium">{project.name}</span>
+                <span className="block text-sm text-stone-500">{project.description || "No description"}</span>
+              </span>
+              <span className="text-xs text-stone-400">{formatWhen(project.updatedAt)}</span>
+            </Link>
+          </li>
+        ))}
+      </ul>
     </main>
   );
 }
