@@ -32,7 +32,10 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
 
 export async function apiBlob(path: string): Promise<Blob> {
   const response = await fetch(`${base}${path}`, { credentials: "include" });
-  if (!response.ok) throw new ApiError("Download failed", response.status);
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new ApiError(messageFrom(payload, "Download failed"), response.status);
+  }
   return response.blob();
 }
 

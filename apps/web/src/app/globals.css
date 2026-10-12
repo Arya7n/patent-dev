@@ -7,6 +7,11 @@ body {
   color: #1c1915;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 .react-pdf__Page {
   position: relative;
 }
