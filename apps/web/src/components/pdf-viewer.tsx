@@ -23,14 +23,21 @@ export function PdfViewer({
   const [pageWidth, setPageWidth] = useState(612);
 
   useEffect(() => {
-    if (!documentId) return;
+    if (!documentId) {
+      setFile(null);
+      setError(null);
+      return;
+    }
     let cancelled = false;
+    setFile(null);
+    setError(null);
+    setPage(1);
     apiBlob(`/documents/${documentId}/file`)
       .then((blob) => {
         if (!cancelled) setFile(blob);
       })
-      .catch(() => {
-        if (!cancelled) setError("The document could not be opened.");
+      .catch((reason: unknown) => {
+        if (!cancelled) setError(reason instanceof Error && reason.message ? reason.message : "The document could not be opened.");
       });
     return () => {
       cancelled = true;

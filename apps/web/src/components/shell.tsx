@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { ApiError, api } from "@/lib/api";
 import type { Profile } from "@/lib/types";
 
 const links = [
@@ -21,11 +22,25 @@ export function Shell({ children }: { children: React.ReactNode }) {
     retry: false,
   });
 
+  const signedOut = profile.error instanceof ApiError && profile.error.status === 401;
+
+  useEffect(() => {
+    if (signedOut) router.replace("/login");
+  }, [router, signedOut]);
+
   if (profile.isLoading) return <main className="p-8 text-sm text-stone-500">Loading workspace…</main>;
-  if (profile.isError) {
-    router.replace("/login");
-    return null;
+  if (profile.isError && !signedOut) {
+    return (
+      <main className="mx-auto max-w-lg p-8">
+        <h1 className="font-serif text-3xl">Workspace unavailable</h1>
+        <p className="mt-3 text-sm text-stone-600">
+          The API at {process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"} did not respond. Start it with{" "}
+          <code className="rounded bg-stone-200 px-1">pnpm dev:api</code> and reload this page.
+        </p>
+      </main>
+    );
   }
+  if (signedOut) return <main className="p-8 text-sm text-stone-500">Redirecting to sign in…</main>;
 
   return (
     <div className="min-h-screen">
@@ -36,6 +51,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <aside className="border-r border-line bg-ink px-4 py-6 text-stone-100">
           <p className="font-serif text-xl">Patent desk</p>
           <p className="mt-1 text-xs text-stone-400">{profile.data?.organization?.name}</p>
+          <p className="mt-1 truncate text-xs text-stone-500">{profile.data?.user?.name}</p>
           <nav className="mt-8 grid gap-1">
             {links.map(([href, label]) => (
               <Link
