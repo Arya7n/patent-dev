@@ -58,6 +58,7 @@ export type EvidenceItem = {
 
 export type ClaimChart = {
   projectName: string;
+  targetTitle?: string | null;
   disclaimer: string;
   elements: { id: string; key: string; text: string; claimNumber: number; claimText?: string }[];
   priorArt: { id: string; title: string }[];

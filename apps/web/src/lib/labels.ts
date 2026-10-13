@@ -23,6 +23,10 @@ export function documentRoleLabel(role: string) {
   return ROLE[role] ?? role;
 }
 
+export function isSearchableReference(document: { role: string; status: string }) {
+  return (document.role === "prior_art" || document.role === "reference") && document.status === "completed";
+}
+
 export function isDocumentBusy(status: string) {
   return status === "queued" || status === "extracting" || status === "embedding" || status === "processing";
 }
