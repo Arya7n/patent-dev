@@ -6,7 +6,7 @@ import { use, useState } from "react";
 import { PdfViewer } from "@/components/pdf-viewer";
 import { api } from "@/lib/api";
 import { errorMessage, waitForJob } from "@/lib/jobs";
-import { STATUS_CLASS, type Claim, type ClaimElement, type EvidenceItem, type PatentDocument } from "@/lib/types";
+import { STATUS_CLASS, type Claim, type ClaimElement, type EvidenceItem, type Job, type PatentDocument } from "@/lib/types";
 
 const ELEMENT_TYPES = ["component", "function", "relationship", "limitation", "other"] as const;
 
@@ -18,6 +18,7 @@ export default function ClaimsPage({ params }: { params: Promise<{ projectId: st
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<string | null>(null);
+  const [pickedDocumentId, setPickedDocumentId] = useState<string | null>(null);
   const documents = useQuery({
     queryKey: ["documents", projectId],
     queryFn: () => api<PatentDocument[]>(`/projects/${projectId}/documents`),
@@ -34,7 +35,7 @@ export default function ClaimsPage({ params }: { params: Promise<{ projectId: st
   const target = documents.data?.find((document) => document.role === "target" && document.status === "completed")
     ?? documents.data?.find((document) => document.role === "target");
   const priorReady = (documents.data ?? []).some((document) => document.role === "prior_art" && document.status === "completed");
-  const viewerDocument = active?.evidence?.documentId ?? target?.id ?? null;
+  const viewerDocument = active?.evidence?.documentId ?? pickedDocumentId ?? target?.id ?? null;
   const selected = (claims.data ?? []).flatMap((claim) => claim.elements).find((element) => element.id === elementId) ?? null;
 
   function refreshClaims() {
@@ -42,13 +43,22 @@ export default function ClaimsPage({ params }: { params: Promise<{ projectId: st
     void client.invalidateQueries({ queryKey: ["chart", projectId] });
   }
 
+  function jobStatus(job: Job, elapsedMs: number) {
+    if (job.status === "queued" && elapsedMs > 12_000) {
+      return "Still queued. The background worker has not picked this up yet.";
+    }
+    if (job.status === "queued") return "Queued…";
+    if (job.status === "processing") return "Reading the patent…";
+    return "Working…";
+  }
+
   async function runJob(key: string, start: () => Promise<{ jobId: string }>, done: string) {
     setPending(key);
     setError(null);
-    setNotice("Working…");
+    setNotice("Queued…");
     try {
       const job = await start();
-      await waitForJob(job.jobId);
+      await waitForJob(job.jobId, 180_000, (current, elapsedMs) => setNotice(jobStatus(current, elapsedMs)));
       setNotice(done);
       refreshClaims();
       if (elementId) void client.invalidateQueries({ queryKey: ["evidence", elementId] });
@@ -62,19 +72,34 @@ export default function ClaimsPage({ params }: { params: Promise<{ projectId: st
   }
 
   return (
-    <div className="grid h-[calc(100vh-8.5rem)] min-h-[32rem] grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)_340px]">
-      <aside className="overflow-auto border-b border-line bg-panel p-4 xl:border-b-0 xl:border-r">
+    <div className="flex flex-col xl:grid xl:h-[calc(100vh-8.5rem)] xl:min-h-0 xl:grid-cols-[minmax(16rem,20rem)_minmax(0,1fr)_minmax(17rem,22rem)]">
+      <aside className="max-h-80 overflow-auto border-b border-line bg-panel p-4 xl:max-h-none xl:min-h-0 xl:border-b-0 xl:border-r">
         <div className="mb-3 flex flex-wrap gap-2">
           <button
             className="rounded border border-line px-2 py-1 text-xs"
             disabled={!target || target.status !== "completed" || pending === "extract"}
             onClick={() => {
               if (!target) return;
-              void runJob(
-                "extract",
-                () => api(`/documents/${target.id}/extract-claims`, { method: "POST" }),
-                "Claims updated.",
-              );
+              void (async () => {
+                setPending("extract");
+                setError(null);
+                setNotice("Queued…");
+                try {
+                  const job = await api<{ jobId: string }>(`/documents/${target.id}/extract-claims`, { method: "POST" });
+                  await waitForJob(job.jobId, 180_000, (current, elapsedMs) => setNotice(jobStatus(current, elapsedMs)));
+                  const next = await client.fetchQuery({
+                    queryKey: ["claims", projectId],
+                    queryFn: () => api<Claim[]>(`/projects/${projectId}/claims`),
+                  });
+                  setNotice(next.length > 0 ? `Found ${next.length} claim${next.length === 1 ? "" : "s"}.` : "No claims were found. You can add one manually below.");
+                  void client.invalidateQueries({ queryKey: ["chart", projectId] });
+                } catch (reason) {
+                  setNotice(null);
+                  setError(errorMessage(reason, "Claim identification failed"));
+                } finally {
+                  setPending(null);
+                }
+              })();
             }}
           >
             {pending === "extract" ? "Identifying…" : "Identify claims"}
@@ -178,15 +203,37 @@ export default function ClaimsPage({ params }: { params: Promise<{ projectId: st
         ))}
         {target ? <AddClaim projectId={projectId} documentId={target.id} onSaved={refreshClaims} onError={setError} /> : null}
       </aside>
-      <PdfViewer
-        documentId={viewerDocument}
-        highlight={
-          active?.evidence
-            ? { page: active.evidence.pageNumber, bbox: active.evidence.bbox }
-            : null
-        }
-      />
-      <aside className="overflow-auto border-t border-line bg-panel p-4 xl:border-l xl:border-t-0">
+      <section className="flex h-[min(78vh,920px)] min-h-[24rem] min-w-0 flex-col border-y border-line xl:h-full xl:min-h-0 xl:border-y-0">
+        <div className="flex items-center gap-2 border-b border-line bg-panel px-3 py-2">
+          <label htmlFor="viewer-document" className="shrink-0 text-xs text-stone-500">Document</label>
+          <select
+            id="viewer-document"
+            className="min-w-0 flex-1 rounded border border-line bg-white px-2 py-1 text-sm"
+            value={viewerDocument ?? ""}
+            onChange={(event) => {
+              setPickedDocumentId(event.target.value || null);
+              setActive(null);
+            }}
+          >
+            {(documents.data ?? []).map((document) => (
+              <option key={document.id} value={document.id}>
+                {document.role === "target" ? "Target" : document.role === "prior_art" ? "Prior art" : "Reference"} · {document.title || document.originalFilename}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="min-h-0 flex-1">
+          <PdfViewer
+            documentId={viewerDocument}
+            highlight={
+              active?.evidence
+                ? { page: active.evidence.pageNumber, bbox: active.evidence.bbox }
+                : null
+            }
+          />
+        </div>
+      </section>
+      <aside className="max-h-[32rem] overflow-auto border-line bg-panel p-4 xl:max-h-none xl:min-h-0 xl:border-l">
         <h2 className="font-serif text-xl">Evidence</h2>
         <p className="mt-1 text-xs text-stone-500">Potentially relevant passages. Analyst review is required.</p>
         {selected ? <ElementEditor element={selected} onSaved={refreshClaims} onDeleted={() => { setElementId(null); refreshClaims(); }} onError={setError} /> : null}
