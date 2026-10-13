@@ -4,6 +4,7 @@ import {
   RESEARCH_DISCLAIMER,
   type EvidenceRelationship,
 } from "./domain";
+import type { PhraseAlignment } from "./schemas";
 
 export type ChartEvidence = {
   text: string;
@@ -13,6 +14,7 @@ export type ChartEvidence = {
   analystRelationship: EvidenceRelationship | null;
   analystNote: string | null;
   evidenceId: string | null;
+  alignments: PhraseAlignment[];
 };
 
 export type ChartCell = {
@@ -26,7 +28,8 @@ export type ChartCell = {
 export type ClaimChart = {
   projectName: string;
   disclaimer: string;
-  elements: { id: string; key: string; text: string; claimNumber: number }[];
+  targetTitle: string | null;
+  elements: { id: string; key: string; text: string; claimNumber: number; claimText: string }[];
   priorArt: { id: string; title: string }[];
   cells: ChartCell[];
 };
@@ -42,10 +45,12 @@ export type ChartLinkInput = {
   pageNumber: number | null;
   explanation: string | null;
   analystNote: string | null;
+  alignments?: PhraseAlignment[];
 };
 
 export function buildClaimChart(input: {
   projectName: string;
+  targetTitle?: string | null;
   elements: ClaimChart["elements"];
   priorArt: ClaimChart["priorArt"];
   links: ChartLinkInput[];
@@ -86,6 +91,7 @@ export function buildClaimChart(input: {
           analystRelationship: link.analyst,
           analystNote: link.analystNote,
           evidenceId: link.evidenceId,
+          alignments: link.alignments ?? [],
         })),
     });
   }
@@ -93,6 +99,7 @@ export function buildClaimChart(input: {
   return {
     projectName: input.projectName,
     disclaimer: RESEARCH_DISCLAIMER,
+    targetTitle: input.targetTitle ?? null,
     elements: input.elements,
     priorArt: input.priorArt,
     cells,

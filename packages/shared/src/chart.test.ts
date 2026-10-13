@@ -5,7 +5,7 @@ describe("buildClaimChart", () => {
   it("shows the analyst decision and keeps the quoted passage", () => {
     const chart = buildClaimChart({
       projectName: "Sensor alert",
-      elements: [{ id: "e1", key: "E3", text: "Receive sensor data", claimNumber: 1 }],
+      elements: [{ id: "e1", key: "E3", text: "Receive sensor data", claimNumber: 1, claimText: "A system that can receive sensor data." }],
       priorArt: [{ id: "d1", title: "Prior Art A" }],
       links: [
         {
