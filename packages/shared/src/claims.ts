@@ -25,6 +25,15 @@ export function extractClaimBlocks(text: string): ClaimDraft[] {
   return claims;
 }
 
+const CLAIM_PREAMBLE = /(?:^|\n)\s*(?:what is claimed is|i claim|we claim|claims?)\b[^\n]*(?:\n|$)/gi;
+
+export function textAfterClaimPreamble(text: string): string | null {
+  let last: RegExpMatchArray | null = null;
+  for (const match of text.matchAll(CLAIM_PREAMBLE)) last = match;
+  if (!last || last.index == null) return null;
+  return text.slice(last.index + last[0].length);
+}
+
 export function extractClaimsFromSections(
   sections: { kind: string; text: string }[],
 ): ClaimDraft[] {
@@ -32,5 +41,7 @@ export function extractClaimsFromSections(
   if (claimsSections.length > 0) {
     return extractClaimBlocks(claimsSections.map((section) => section.text).join("\n"));
   }
-  return extractClaimBlocks(sections.map((section) => section.text).join("\n"));
+  const full = sections.map((section) => section.text).join("\n");
+  const claimsText = textAfterClaimPreamble(full);
+  return extractClaimBlocks(claimsText ?? full);
 }

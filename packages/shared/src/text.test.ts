@@ -22,6 +22,18 @@ describe("claims", () => {
     expect(claims[1].isIndependent).toBe(false);
     expect(claims[1].claimNumber).toBe(2);
   });
+
+  it("reads claims that follow a bare claim heading and ignores earlier numbering", () => {
+    const claims = extractClaimsFromSections([
+      {
+        kind: "other",
+        text: "1. This numbered sentence is still the description of a pulley.\nHaving thus described my invention, I\nclaim\n1. The combination with a driven pulley and a belt.\n2. The combination of claim 1, wherein the belt is endless.",
+      },
+    ]);
+    expect(claims.map((claim) => claim.claimNumber)).toEqual([1, 2]);
+    expect(claims[0].text).toContain("driven pulley");
+    expect(claims[1].isIndependent).toBe(false);
+  });
 });
 
 describe("sections and chunks", () => {

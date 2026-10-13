@@ -23,6 +23,7 @@ const SECTION_RULES: { kind: SectionKind; pattern: RegExp }[] = [
 export function detectSectionKind(line: string): SectionKind | null {
   const trimmed = line.trim();
   if (!trimmed || trimmed.length > 120) return null;
+  if (/^claims?$/i.test(trimmed)) return "claims";
   for (const rule of SECTION_RULES) {
     if (rule.pattern.test(trimmed)) return rule.kind;
   }
