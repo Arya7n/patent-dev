@@ -7,6 +7,7 @@ import { HighlightedText } from "@/components/highlighted-text";
 import { PdfViewer } from "@/components/pdf-viewer";
 import { api } from "@/lib/api";
 import { errorMessage, waitForJob } from "@/lib/jobs";
+import { isSearchableReference } from "@/lib/labels";
 import { STATUS_CLASS, type Claim, type ClaimElement, type EvidenceItem, type Job, type PatentDocument } from "@/lib/types";
 
 const ELEMENT_TYPES = ["component", "function", "relationship", "limitation", "other"] as const;
@@ -35,7 +36,7 @@ export default function ClaimsPage({ params }: { params: Promise<{ projectId: st
   });
   const target = documents.data?.find((document) => document.role === "target" && document.status === "completed")
     ?? documents.data?.find((document) => document.role === "target");
-  const priorReady = (documents.data ?? []).some((document) => document.role === "prior_art" && document.status === "completed");
+  const priorReady = (documents.data ?? []).some((document) => isSearchableReference(document));
   const viewerDocument = active?.evidence?.documentId ?? pickedDocumentId ?? target?.id ?? null;
   const selected = (claims.data ?? []).flatMap((claim) => claim.elements).find((element) => element.id === elementId) ?? null;
 
@@ -140,7 +141,7 @@ export default function ClaimsPage({ params }: { params: Promise<{ projectId: st
         ) : null}
         {!priorReady ? (
           <p className="mb-3 text-xs text-stone-500">
-            Process at least one prior-art PDF before searching. <Link href={`/projects/${projectId}/documents`} className="underline">Open documents</Link>
+            Process at least one prior-art or reference PDF before searching. <Link href={`/projects/${projectId}/documents`} className="underline">Open documents</Link>
           </p>
         ) : null}
         {notice ? <p className="mb-3 text-xs text-stone-600">{notice}</p> : null}

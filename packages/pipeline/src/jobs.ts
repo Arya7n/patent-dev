@@ -383,7 +383,11 @@ export async function mapElement(ctx: PipelineContext, elementId: string) {
     kind: "embedding",
   });
   const vector = embedded.vectors[0] ?? [];
-  const hits = await searchSimilarChunks(ctx.db, vector, searchable.map((document) => document.id), 8);
+  const hits = [];
+  for (const document of searchable) {
+    const found = await searchSimilarChunks(ctx.db, vector, [document.id], 3);
+    hits.push(...found);
+  }
   const incoming = [];
   for (const hit of hits) {
     let assessment;
