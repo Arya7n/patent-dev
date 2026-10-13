@@ -1,66 +1,197 @@
-import { Document, HeadingLevel, Packer, Paragraph, Table, TableCell, TableRow, TextRun } from "docx";
+import {
+  AlignmentType,
+  Document,
+  Header,
+  Packer,
+  Paragraph,
+  ShadingType,
+  Table,
+  TableCell,
+  TableRow,
+  TextRun,
+  WidthType,
+} from "docx";
 import PDFDocument from "pdfkit";
-import { RELATIONSHIP_LABELS, type ClaimChart, type EvidenceRelationship } from "@patent/shared";
+import type { ClaimChart, PhraseAlignment } from "@patent/shared";
 
-function label(value: string): string {
-  if (value in RELATIONSHIP_LABELS) return RELATIONSHIP_LABELS[value as EvidenceRelationship];
-  return value;
+const INK = "333333";
+const HEADER_BLUE = "0070C0";
+
+type TextPart = { text: string; color: string | null };
+
+function quoteParts(text: string, alignments: PhraseAlignment[], field: "claimPhrase" | "sourcePhrase"): TextPart[] {
+  const marks = alignments
+    .map((item) => ({ phrase: item[field], color: item.color }))
+    .filter((item) => item.phrase.length > 0)
+    .sort((a, b) => b.phrase.length - a.phrase.length);
+  const parts: TextPart[] = [];
+  let cursor = 0;
+  const lower = text.toLowerCase();
+  while (cursor < text.length) {
+    let found: { index: number; phrase: string; color: string } | null = null;
+    for (const mark of marks) {
+      const index = lower.indexOf(mark.phrase.toLowerCase(), cursor);
+      if (index < 0) continue;
+      if (!found || index < found.index || (index === found.index && mark.phrase.length > found.phrase.length)) {
+        found = { index, phrase: text.slice(index, index + mark.phrase.length), color: mark.color };
+      }
+    }
+    if (!found) {
+      parts.push({ text: text.slice(cursor), color: null });
+      break;
+    }
+    if (found.index > cursor) parts.push({ text: text.slice(cursor, found.index), color: null });
+    parts.push({ text: found.phrase, color: found.color });
+    cursor = found.index + found.phrase.length;
+  }
+  return parts.filter((part) => part.text.length > 0);
+}
+
+function docxRuns(text: string, alignments: PhraseAlignment[], field: "claimPhrase" | "sourcePhrase", bold = false): TextRun[] {
+  const parts = quoteParts(text, alignments, field);
+  if (parts.length === 0) return [new TextRun({ text, color: INK, bold })];
+  return parts.map(
+    (part) =>
+      new TextRun({
+        text: part.text,
+        bold,
+        color: INK,
+        shading: part.color ? { type: ShadingType.CLEAR, fill: part.color } : undefined,
+      }),
+  );
+}
+
+function cell(children: Paragraph[], fill?: string): TableCell {
+  return new TableCell({
+    width: { size: fill ? 4680 : 4680, type: WidthType.DXA },
+    margins: { top: 80, bottom: 80, left: 80, right: 80 },
+    shading: fill ? { type: ShadingType.CLEAR, fill } : undefined,
+    children,
+  });
+}
+
+function paragraph(text: string, options?: { bold?: boolean; color?: string; size?: number }): Paragraph {
+  return new Paragraph({
+    spacing: { after: 80 },
+    children: [
+      new TextRun({
+        text,
+        bold: options?.bold,
+        color: options?.color ?? INK,
+        size: options?.size ?? 20,
+      }),
+    ],
+  });
+}
+
+function bestEvidence(chart: ClaimChart, elementId: string, documentId: string) {
+  const cell = chart.cells.find((item) => item.elementId === elementId && item.documentId === documentId);
+  const ranked = [...(cell?.evidence ?? [])].sort((a, b) => b.confidence - a.confidence);
+  return ranked[0] ?? null;
 }
 
 export async function renderDocx(chart: ClaimChart): Promise<Buffer> {
-  const header = [
-    "Element",
-    ...chart.priorArt.map((document) => document.title),
-  ];
-  const rows = [
+  const claimNumbers = [...new Set(chart.elements.map((element) => element.claimNumber))];
+  const rows: TableRow[] = [
     new TableRow({
-      children: header.map((text) => new TableCell({ children: [new Paragraph({ children: [new TextRun({ text, bold: true })] })] })),
+      children: [
+        cell([paragraph(`Patent / matter: ${chart.targetTitle || chart.projectName}`, { bold: true, color: HEADER_BLUE, size: 22 })], "FFFFFF"),
+        cell([paragraph(chart.projectName, { bold: true })], "FFFFFF"),
+      ],
     }),
-    ...chart.elements.map((element) => {
-      const cells = [
-        `${element.key}. ${element.text}`,
-        ...chart.priorArt.map((document) => {
-          const cell = chart.cells.find(
-            (item) => item.elementId === element.id && item.documentId === document.id,
-          );
-          return cell ? label(cell.relationship) : "No evidence identified";
-        }),
-      ];
-      return new TableRow({
-        children: cells.map((text) => new TableCell({ children: [new Paragraph(text)] })),
-      });
+    new TableRow({
+      children: [
+        cell([paragraph("References", { bold: true })]),
+        cell(
+          chart.priorArt.length > 0
+            ? chart.priorArt.map((document, index) => paragraph(`${index + 1}. ${document.title}`))
+            : [paragraph("No reference documents were uploaded.")],
+        ),
+      ],
+    }),
+    new TableRow({
+      children: [
+        cell([paragraph("Claims", { bold: true, color: "FFFFFF" })], "1F4B3A"),
+        cell([paragraph("Mapping", { bold: true, color: "FFFFFF" })], "1F4B3A"),
+      ],
     }),
   ];
 
-  const appendix = chart.cells.flatMap((cell) => {
-    const element = chart.elements.find((item) => item.id === cell.elementId);
-    const document = chart.priorArt.find((item) => item.id === cell.documentId);
-    return cell.evidence.flatMap((item) => [
-      new Paragraph({
+  for (const claimNumber of claimNumbers) {
+    const elements = chart.elements.filter((element) => element.claimNumber === claimNumber);
+    const claimText = elements[0]?.claimText || "";
+    rows.push(
+      new TableRow({
         children: [
-          new TextRun({
-            text: `${element?.key ?? "Element"} · ${document?.title ?? "Prior art"} · page ${item.pageNumber}`,
-            bold: true,
-          }),
+          cell([
+            paragraph(`Claim ${claimNumber}`, { bold: true, color: HEADER_BLUE }),
+            paragraph(claimText),
+          ]),
+          cell([
+            paragraph(
+              "The clauses below are mapped to the cited references. Matching highlight colors mark corresponding phrases. This is research assistance, not a legal conclusion.",
+            ),
+          ]),
         ],
       }),
-      new Paragraph(item.text || "No quoted passage was stored."),
-      new Paragraph(item.explanation),
-      new Paragraph(""),
-    ]);
-  });
+    );
+    elements.forEach((element, index) => {
+      const mappings = chart.priorArt.flatMap((document) => {
+        const evidence = bestEvidence(chart, element.id, document.id);
+        const blocks = [paragraph(document.title, { bold: true, color: HEADER_BLUE })];
+        if (!evidence) {
+          blocks.push(paragraph("No corresponding passage was identified."));
+          return blocks;
+        }
+        blocks.push(
+          new Paragraph({
+            spacing: { after: 80 },
+            children: docxRuns(evidence.text || "No quoted passage was stored.", evidence.alignments, "sourcePhrase"),
+          }),
+        );
+        blocks.push(paragraph(`Page ${evidence.pageNumber}`, { size: 18, color: "666666" }));
+        blocks.push(paragraph(evidence.explanation));
+        if (evidence.analystNote) blocks.push(paragraph(`Analyst note: ${evidence.analystNote}`));
+        return blocks;
+      });
+      rows.push(
+        new TableRow({
+          children: [
+            cell([
+              paragraph(`Clause ${index + 1}`, { bold: true }),
+              new Paragraph({
+                spacing: { after: 80 },
+                children: docxRuns(element.text, chart.priorArt.flatMap((document) => bestEvidence(chart, element.id, document.id)?.alignments ?? []), "claimPhrase"),
+              }),
+            ]),
+            cell(mappings.length > 0 ? mappings : [paragraph("No reference documents were available.")]),
+          ],
+        }),
+      );
+    });
+  }
 
   const doc = new Document({
     sections: [
       {
+        headers: {
+          default: new Header({
+            children: [
+              new Paragraph({
+                alignment: AlignmentType.RIGHT,
+                children: [new TextRun({ text: "CONFIDENTIAL", bold: true, color: HEADER_BLUE, size: 18 })],
+              }),
+            ],
+          }),
+        },
         children: [
-          new Paragraph({ text: chart.projectName, heading: HeadingLevel.HEADING_1 }),
-          new Paragraph("Claim chart — research assistance"),
-          new Paragraph(chart.disclaimer),
-          new Paragraph(""),
-          new Table({ rows }),
-          new Paragraph({ text: "Evidence appendix", heading: HeadingLevel.HEADING_2 }),
-          ...appendix,
+          paragraph("Claim chart", { bold: true, color: HEADER_BLUE, size: 32 }),
+          paragraph(chart.disclaimer, { size: 18, color: "666666" }),
+          new Table({
+            width: { size: 9360, type: WidthType.DXA },
+            columnWidths: [4200, 5160],
+            rows,
+          }),
         ],
       },
     ],
@@ -70,32 +201,91 @@ export async function renderDocx(chart: ClaimChart): Promise<Buffer> {
 
 export function renderPdf(chart: ClaimChart): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const doc = new PDFDocument({ margin: 48 });
+    const doc = new PDFDocument({ margin: 48, size: "LETTER" });
     const chunks: Buffer[] = [];
     doc.on("data", (chunk: Buffer) => chunks.push(chunk));
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
-    doc.fontSize(18).text(chart.projectName);
+    doc.fillColor("#0070C0").fontSize(10).text("CONFIDENTIAL", { align: "right" });
     doc.moveDown(0.4);
-    doc.fontSize(11).text("Claim chart — research assistance");
+    doc.fontSize(18).text("Claim chart");
+    doc.moveDown(0.3);
+    doc.fillColor("#666666").fontSize(9).text(chart.disclaimer);
+    doc.fillColor("#333333").moveDown();
+    doc.fontSize(12).text(`Patent / matter: ${chart.targetTitle || chart.projectName}`);
     doc.moveDown(0.4);
-    doc.fontSize(9).fillColor("#444444").text(chart.disclaimer);
-    doc.fillColor("#111111").moveDown();
-    for (const element of chart.elements) {
-      doc.fontSize(12).text(`${element.key}. ${element.text}`);
-      for (const document of chart.priorArt) {
-        const cell = chart.cells.find(
-          (item) => item.elementId === element.id && item.documentId === document.id,
-        );
-        doc.fontSize(10).text(`${document.title}: ${cell ? label(cell.relationship) : "No evidence identified"}`);
-        for (const item of cell?.evidence ?? []) {
-          doc.fontSize(9).text(`Page ${item.pageNumber}: ${item.text}`);
-          doc.fontSize(9).fillColor("#444444").text(item.explanation);
-          doc.fillColor("#111111");
+    doc.fontSize(11).text("References");
+    if (chart.priorArt.length === 0) doc.fontSize(10).text("No reference documents were uploaded.");
+    chart.priorArt.forEach((document, index) => doc.fontSize(10).text(`${index + 1}. ${document.title}`));
+    doc.moveDown();
+
+    const claimNumbers = [...new Set(chart.elements.map((element) => element.claimNumber))];
+    for (const claimNumber of claimNumbers) {
+      const elements = chart.elements.filter((element) => element.claimNumber === claimNumber);
+      doc.fillColor("#0070C0").fontSize(13).text(`Claim ${claimNumber}`);
+      doc.fillColor("#333333").fontSize(10).text(elements[0]?.claimText || "");
+      doc.moveDown(0.4);
+      elements.forEach((element, index) => {
+        doc.fontSize(11).text(`Clause ${index + 1}`);
+        writeColored(doc, element.text, chart.priorArt.flatMap((document) => bestEvidence(chart, element.id, document.id)?.alignments ?? []), "claimPhrase");
+        for (const document of chart.priorArt) {
+          const evidence = bestEvidence(chart, element.id, document.id);
+          doc.fillColor("#0070C0").fontSize(10).text(document.title);
+          if (!evidence) {
+            doc.fillColor("#333333").fontSize(10).text("No corresponding passage was identified.");
+            continue;
+          }
+          writeColored(doc, evidence.text, evidence.alignments, "sourcePhrase");
+          doc.fillColor("#666666").fontSize(9).text(`Page ${evidence.pageNumber}`);
+          doc.fillColor("#333333").fontSize(10).text(evidence.explanation);
+          if (evidence.analystNote) doc.fontSize(10).text(`Analyst note: ${evidence.analystNote}`);
         }
-      }
-      doc.moveDown();
+        doc.moveDown();
+      });
     }
     doc.end();
   });
+}
+
+function writeColored(
+  doc: InstanceType<typeof PDFDocument>,
+  text: string,
+  alignments: PhraseAlignment[],
+  field: "claimPhrase" | "sourcePhrase",
+) {
+  const parts = quoteParts(text, alignments, field);
+  const source = parts.length > 0 ? parts : [{ text, color: null as string | null }];
+  doc.fontSize(10);
+  const lineHeight = 14;
+  const left = doc.page.margins.left;
+  const right = doc.page.width - doc.page.margins.right;
+  let x = doc.x;
+  let y = doc.y;
+  const tokens: TextPart[] = [];
+  for (const part of source) {
+    for (const piece of part.text.split(/(\s+)/)) {
+      if (piece.length > 0) tokens.push({ text: piece, color: part.color });
+    }
+  }
+  for (const token of tokens) {
+    const width = doc.widthOfString(token.text);
+    if (token.text.trim().length > 0 && x > left && x + width > right) {
+      x = left;
+      y += lineHeight;
+    }
+    if (y + lineHeight > doc.page.height - doc.page.margins.bottom) {
+      doc.addPage();
+      x = doc.page.margins.left;
+      y = doc.page.margins.top;
+    }
+    if (token.color && token.text.trim().length > 0) {
+      doc.save();
+      doc.rect(x, y - 1, width, lineHeight - 2).fill(`#${token.color}`);
+      doc.restore();
+    }
+    doc.fillColor("#333333").text(token.text, x, y, { lineBreak: false });
+    x += width;
+  }
+  doc.x = left;
+  doc.y = y + lineHeight;
 }

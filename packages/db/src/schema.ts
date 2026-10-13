@@ -11,7 +11,7 @@ import {
   boolean,
   index,
 } from "drizzle-orm/pg-core";
-import type { BBox } from "@patent/shared";
+import type { BBox, PhraseAlignment } from "@patent/shared";
 
 const vector768 = customType<{ data: number[]; driverData: string }>({
   dataType() {
@@ -230,6 +230,7 @@ export const evidence = pgTable(
     relationship: text("relationship").notNull(),
     model: text("model"),
     bbox: jsonb("bbox").$type<BBox | null>(),
+    mapping: jsonb("mapping").$type<PhraseAlignment[] | null>(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("evidence_project_idx").on(table.projectId)],

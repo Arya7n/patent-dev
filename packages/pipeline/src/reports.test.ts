@@ -5,7 +5,8 @@ import { renderDocx, renderPdf } from "./reports";
 const chart = {
   projectName: "Sensor alert",
   disclaimer: RESEARCH_DISCLAIMER,
-  elements: [{ id: "e1", key: "E1", text: "Receive sensor data", claimNumber: 1 }],
+  targetTitle: "US0000000",
+  elements: [{ id: "e1", key: "E1", text: "Receive sensor data", claimNumber: 1, claimText: "A system configured to receive sensor data." }],
   priorArt: [{ id: "d1", title: "Prior Art A" }],
   cells: [
     {
@@ -22,6 +23,7 @@ const chart = {
           analystRelationship: null,
           analystNote: null,
           evidenceId: "ev1",
+          alignments: [{ claimPhrase: "sensor data", sourcePhrase: "sensor data", color: "C5E0B3" }],
         },
       ],
     },

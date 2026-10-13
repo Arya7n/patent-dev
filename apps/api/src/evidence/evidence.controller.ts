@@ -187,6 +187,7 @@ export class EvidenceController {
             text: item.evidenceText,
             pageNumber: item.pageNumber,
             explanation: item.explanation,
+            alignments: item.mapping ?? [],
             bbox: item.bbox,
             documentId: item.sourceDocumentId,
           }

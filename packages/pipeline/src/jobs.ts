@@ -336,8 +336,9 @@ export async function decomposeClaim(ctx: PipelineContext, claimId: string) {
     ctx,
     { organizationId: project.organizationId, projectId: project.id, operation: "decompose_claim" },
     [
-      "Decompose this patent claim into technical or legal elements.",
-      "Do not conclude invalidity, infringement, or patentability.",
+      "Split this claim into chart clauses, in order, using the claim's own wording.",
+      "If the claim has a preamble before the steps, make that the first element and keep each later step or wherein clause as its own element.",
+      "Do not paraphrase and do not conclude invalidity, infringement, or patentability.",
       "Return JSON {\"claimNumber\":1,\"elements\":[{\"id\":\"E1\",\"text\":\"...\",\"type\":\"component|function|relationship|limitation|other\"}]}",
       `Claim number: ${claim.claimNumber}`,
       `Claim text: ${claim.text}`,
@@ -367,7 +368,9 @@ export async function mapElement(ctx: PipelineContext, elementId: string) {
     .select()
     .from(documents)
     .where(eq(documents.projectId, project.id));
-  const searchable = priorArt.filter((document) => document.role === "prior_art" && document.status === "completed");
+  const searchable = priorArt.filter(
+    (document) => (document.role === "prior_art" || document.role === "reference") && document.status === "completed",
+  );
   if (searchable.length === 0) throw new Error("No processed prior-art documents are available");
 
   const embedded = await ctx.ai.embed([element.text]);
@@ -389,13 +392,17 @@ export async function mapElement(ctx: PipelineContext, elementId: string) {
         ctx,
         { organizationId: project.organizationId, projectId: project.id, operation: "classify_evidence" },
         [
-          "Compare one claim element with one prior-art passage.",
-          "Classify correspondence only. Do not say a patent is invalid or infringed.",
-          "Describe the result as potentially relevant evidence, a possible match, or analyst review required.",
-          "Return JSON with relationship (STRONG_MATCH, PARTIAL_MATCH, WEAK_MATCH, NO_EVIDENCE, or NEEDS_REVIEW), confidence from 0 to 1, reasoning, evidenceText as a short quote from the passage, and sourcePage.",
-          `Claim element: ${element.text}`,
+          "Write one cell of a two-column claim chart. The left column is the claim clause. The right column maps that clause to the cited passage.",
+          "Do not say a patent is invalid, infringed, or patentable.",
+          "evidenceText must be a verbatim quote from the passage.",
+          "commentary must, for each alignment, say that the clause phrase corresponds to the passage phrase, then explain the technical correspondence in plain language.",
+          "End commentary with exactly one of: 'The cited passage reads on this clause.' or 'The cited passage does not read on this clause.' or 'Analyst review is required.'",
+          "Do not invent column numbers, line numbers, section numbers, or quotations that are not in the passage.",
+          "alignments pair a phrase that appears in the clause with a phrase that appears in the passage. Use one of these fill colors per concept: FFFFCC, C5E0B3, FFCCFF, BDD6EE, F7CAAC, F4B083, FFE599, FFDBB7, 00B0F0, 66FFFF, EF89A1, D0CECE, 9CC2E5.",
+          "Return JSON with relationship (STRONG_MATCH, PARTIAL_MATCH, WEAK_MATCH, NO_EVIDENCE, or NEEDS_REVIEW), confidence from 0 to 1, reasoning as one sentence, commentary, evidenceText, sourcePage, and alignments as {claimPhrase, sourcePhrase, color}.",
+          `Claim clause: ${element.text}`,
           `Source page: ${hit.page_number}`,
-          `Passage:\n${hit.text.slice(0, 4000)}`,
+          `Passage:\n${hit.text.slice(0, 6000)}`,
         ].join("\n\n"),
       );
       assessment = normalizeEvidenceAssessment(json, hit.page_number);
@@ -408,8 +415,10 @@ export async function mapElement(ctx: PipelineContext, elementId: string) {
           relationship: "needs_review" as const,
           confidence: 0,
           reasoning: "The model output could not be validated. Analyst review required.",
+          commentary: "The model output could not be validated. Analyst review required.",
           evidenceText: hit.text.slice(0, 500),
           sourcePage: hit.page_number,
+          alignments: [],
         };
     incoming.push({ hit, data });
   }
@@ -454,7 +463,8 @@ export async function mapElement(ctx: PipelineContext, elementId: string) {
         .update(evidence)
         .set({
           evidenceText: update.hit.evidenceText,
-          explanation: update.hit.reasoning,
+          explanation: item.data.commentary || update.hit.reasoning,
+          mapping: item.data.alignments,
           confidence: update.hit.confidence,
           relationship: update.hit.relationship,
           pageNumber: update.hit.sourcePage,
@@ -487,7 +497,8 @@ export async function mapElement(ctx: PipelineContext, elementId: string) {
           chunkId: item.hit.id,
           pageNumber: created.sourcePage,
           evidenceText: created.evidenceText,
-          explanation: created.reasoning,
+          explanation: item.data.commentary || created.reasoning,
+          mapping: item.data.alignments,
           confidence: created.confidence,
           relationship: created.relationship,
           model: ctx.ai.chatModel,
@@ -568,6 +579,7 @@ export async function loadClaimChart(db: Database, projectId: string): Promise<C
       key: claimElements.elementKey,
       text: claimElements.text,
       claimNumber: claims.claimNumber,
+      claimText: claims.text,
     })
     .from(claimElements)
     .innerJoin(claims, eq(claims.id, claimElements.claimId))
@@ -586,6 +598,7 @@ export async function loadClaimChart(db: Database, projectId: string): Promise<C
       pageNumber: evidence.pageNumber,
       explanation: evidence.explanation,
       analystNote: claimElementEvidence.analystNote,
+      mapping: evidence.mapping,
     })
     .from(claimElementEvidence)
     .innerJoin(claimElements, eq(claimElements.id, claimElementEvidence.claimElementId))
@@ -593,11 +606,13 @@ export async function loadClaimChart(db: Database, projectId: string): Promise<C
     .leftJoin(evidence, eq(evidence.id, claimElementEvidence.evidenceId))
     .where(eq(claims.projectId, projectId));
 
+  const target = priorArt.find((document) => document.role === "target");
   return buildClaimChart({
     projectName: project.name,
+    targetTitle: target?.title || target?.originalFilename || null,
     elements: elementRows,
     priorArt: priorArt
-      .filter((document) => document.role === "prior_art")
+      .filter((document) => document.role === "prior_art" || document.role === "reference")
       .map((document) => ({ id: document.id, title: document.title || document.originalFilename })),
     links: linkRows.map((row) => ({
       elementId: row.elementId,
@@ -610,6 +625,7 @@ export async function loadClaimChart(db: Database, projectId: string): Promise<C
       pageNumber: row.pageNumber,
       explanation: row.explanation,
       analystNote: row.analystNote,
+      alignments: row.mapping ?? [],
     })),
   });
 }

@@ -50,6 +50,7 @@ export type EvidenceItem = {
     text: string;
     pageNumber: number;
     explanation: string;
+    alignments?: { claimPhrase: string; sourcePhrase: string; color: string }[];
     bbox: { x: number; y: number; width: number; height: number } | null;
     documentId: string;
   } | null;
@@ -58,7 +59,7 @@ export type EvidenceItem = {
 export type ClaimChart = {
   projectName: string;
   disclaimer: string;
-  elements: { id: string; key: string; text: string; claimNumber: number }[];
+  elements: { id: string; key: string; text: string; claimNumber: number; claimText?: string }[];
   priorArt: { id: string; title: string }[];
   cells: {
     elementId: string;
@@ -72,6 +73,7 @@ export type ClaimChart = {
       explanation: string;
       confidence: number;
       analystNote: string | null;
+      alignments?: { claimPhrase: string; sourcePhrase: string; color: string }[];
       evidenceId: string | null;
     }[];
   }[];

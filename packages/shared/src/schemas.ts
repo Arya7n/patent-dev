@@ -76,12 +76,39 @@ const relationshipAliases: Record<string, EvidenceRelationship> = {
   NEEDS_REVIEW: "needs_review",
 };
 
+export const ALIGNMENT_COLORS = [
+  "FFFFCC",
+  "C5E0B3",
+  "FFCCFF",
+  "BDD6EE",
+  "F7CAAC",
+  "F4B083",
+  "FFE599",
+  "FFDBB7",
+  "00B0F0",
+  "66FFFF",
+  "EF89A1",
+  "D0CECE",
+  "9CC2E5",
+] as const;
+
+const alignmentColorSet = new Set<string>(ALIGNMENT_COLORS);
+
+export const phraseAlignmentSchema = z.object({
+  claimPhrase: z.string().min(1),
+  sourcePhrase: z.string().min(1),
+  color: z.string(),
+});
+export type PhraseAlignment = z.infer<typeof phraseAlignmentSchema>;
+
 export const evidenceAssessmentSchema = z.object({
   relationship: z.enum(evidenceRelationships),
   confidence: z.number().min(0).max(1),
   reasoning: z.string().min(1),
+  commentary: z.string().min(1),
   evidenceText: z.string(),
   sourcePage: z.number().int().positive(),
+  alignments: z.array(phraseAlignmentSchema),
 });
 export type EvidenceAssessment = z.infer<typeof evidenceAssessmentSchema>;
 
@@ -99,8 +126,18 @@ export function normalizeEvidenceAssessment(
       relationship: z.string().optional(),
       confidence: z.coerce.number().optional(),
       reasoning: z.string().optional(),
+      commentary: z.string().optional(),
       evidenceText: z.string().optional(),
       sourcePage: z.coerce.number().optional(),
+      alignments: z
+        .array(
+          z.object({
+            claimPhrase: z.string().optional(),
+            sourcePhrase: z.string().optional(),
+            color: z.string().optional(),
+          }),
+        )
+        .optional(),
     })
     .safeParse(input);
   if (!loose.success) return loose;
@@ -108,14 +145,25 @@ export function normalizeEvidenceAssessment(
   const relationship =
     relationshipAliases[loose.data.relationship ?? ""] ?? "needs_review";
   const page = loose.data.sourcePage;
+  const reasoning =
+    loose.data.reasoning?.trim() ||
+    "The model did not provide an explanation. Analyst review required.";
+  const alignments = (loose.data.alignments ?? []).flatMap((item, index) => {
+    const claimPhrase = item.claimPhrase?.trim() ?? "";
+    const sourcePhrase = item.sourcePhrase?.trim() ?? "";
+    if (!claimPhrase || !sourcePhrase) return [];
+    const raw = (item.color ?? "").replace("#", "").toUpperCase();
+    const color = alignmentColorSet.has(raw) ? raw : ALIGNMENT_COLORS[index % ALIGNMENT_COLORS.length];
+    return [{ claimPhrase, sourcePhrase, color }];
+  });
   return evidenceAssessmentSchema.safeParse({
     relationship,
     confidence: clamp01(loose.data.confidence ?? 0),
-    reasoning:
-      loose.data.reasoning?.trim() ||
-      "The model did not provide an explanation. Analyst review required.",
+    reasoning,
+    commentary: loose.data.commentary?.trim() || reasoning,
     evidenceText: loose.data.evidenceText?.trim() ?? "",
     sourcePage: page && page > 0 ? Math.round(page) : fallbackPage,
+    alignments,
   });
 }
 

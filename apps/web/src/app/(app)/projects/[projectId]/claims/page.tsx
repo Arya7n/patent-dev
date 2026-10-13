@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { use, useState } from "react";
+import { HighlightedText } from "@/components/highlighted-text";
 import { PdfViewer } from "@/components/pdf-viewer";
 import { api } from "@/lib/api";
 import { errorMessage, waitForJob } from "@/lib/jobs";
@@ -267,7 +268,13 @@ export default function ClaimsPage({ params }: { params: Promise<{ projectId: st
                 {item.evidence ? (
                   <>
                     <p className="mt-1 text-stone-500">Page {item.evidence.pageNumber}</p>
-                    <p className="mt-2 leading-5">{item.evidence.text}</p>
+                    <p className="mt-2 leading-5">
+                      <HighlightedText
+                        text={item.evidence.text}
+                        alignments={item.evidence.alignments ?? []}
+                        field="sourcePhrase"
+                      />
+                    </p>
                     <p className="mt-2 text-stone-600">{item.evidence.explanation}</p>
                   </>
                 ) : (
