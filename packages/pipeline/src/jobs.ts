@@ -336,9 +336,10 @@ export async function decomposeClaim(ctx: PipelineContext, claimId: string) {
     ctx,
     { organizationId: project.organizationId, projectId: project.id, operation: "decompose_claim" },
     [
-      "Split this claim into chart clauses, in order, using the claim's own wording.",
-      "If the claim has a preamble before the steps, make that the first element and keep each later step or wherein clause as its own element.",
-      "Do not paraphrase and do not conclude invalidity, infringement, or patentability.",
+      "Split this claim into chart rows, in order, using the claim's own wording.",
+      "If the claim introduces an apparatus and then lists steps, the first element is only the preamble: the apparatus, the processing or storage elements, and the words through 'comprising' or 'wherein the program code instructs'.",
+      "Each later step, such as receiving, camping, determining, or transmitting, is its own element. Keep that whole step together.",
+      "Do not split one step into separate noun phrases. Do not paraphrase.",
       "Return JSON {\"claimNumber\":1,\"elements\":[{\"id\":\"E1\",\"text\":\"...\",\"type\":\"component|function|relationship|limitation|other\"}]}",
       `Claim number: ${claim.claimNumber}`,
       `Claim text: ${claim.text}`,
@@ -388,6 +389,8 @@ export async function mapElement(ctx: PipelineContext, elementId: string) {
     const found = await searchSimilarChunks(ctx.db, vector, [document.id], 3);
     hits.push(...found);
   }
+  const target = priorArt.find((document) => document.role === "target" && document.status === "completed");
+  const specHit = target ? (await searchSimilarChunks(ctx.db, vector, [target.id], 1))[0] : undefined;
   const incoming = [];
   for (const hit of hits) {
     let assessment;
@@ -396,17 +399,22 @@ export async function mapElement(ctx: PipelineContext, elementId: string) {
         ctx,
         { organizationId: project.organizationId, projectId: project.id, operation: "classify_evidence" },
         [
-          "Write one cell of a two-column claim chart. The left column is the claim clause. The right column maps that clause to the cited passage.",
-          "Do not say a patent is invalid, infringed, or patentable.",
-          "evidenceText must be a verbatim quote from the passage.",
-          "commentary must, for each alignment, say that the clause phrase corresponds to the passage phrase, then explain the technical correspondence in plain language.",
-          "End commentary with exactly one of: 'The cited passage reads on this clause.' or 'The cited passage does not read on this clause.' or 'Analyst review is required.'",
-          "Do not invent column numbers, line numbers, section numbers, or quotations that are not in the passage.",
-          "alignments pair a phrase that appears in the clause with a phrase that appears in the passage. Use one of these fill colors per concept: FFFFCC, C5E0B3, FFCCFF, BDD6EE, F7CAAC, F4B083, FFE599, FFDBB7, 00B0F0, 66FFFF, EF89A1, D0CECE, 9CC2E5.",
+          "Write the mapping comment for one row of a professional claim chart.",
+          "The left column is the claim clause. The right column quotes the reference, then explains the correspondence.",
+          "Do not say a patent is invalid, infringed, essential, or patentable.",
+          "evidenceText must be a verbatim quote from the reference passage, long enough to show the mapped feature.",
+          "commentary has three parts. First, for each alignment, one sentence in this shape: '<claim phrase>' in this clause corresponds to '<reference phrase>' in the reference.",
+          "Second, one plain-language paragraph on the technical correspondence. Quote the patent specification passage only when one is provided, and cite that page. Do not invent column numbers or line numbers.",
+          "Third, end with exactly one of: 'Hence, the cited reference reads on this clause.' or 'Hence, the cited reference does not read on this clause.' or 'Analyst review is required.'",
+          "Cite a section number only when that number appears in the passage.",
+          "alignments pair a phrase that appears in the clause with a phrase that appears in the reference passage. Use one fill color per concept: FFFFCC, C5E0B3, FFCCFF, BDD6EE, F7CAAC, F4B083, FFE599, FFDBB7, 00B0F0, 66FFFF, EF89A1, D0CECE, 9CC2E5.",
           "Return JSON with relationship (STRONG_MATCH, PARTIAL_MATCH, WEAK_MATCH, NO_EVIDENCE, or NEEDS_REVIEW), confidence from 0 to 1, reasoning as one sentence, commentary, evidenceText, sourcePage, and alignments as {claimPhrase, sourcePhrase, color}.",
           `Claim clause: ${element.text}`,
-          `Source page: ${hit.page_number}`,
-          `Passage:\n${hit.text.slice(0, 6000)}`,
+          `Reference page: ${hit.page_number}`,
+          `Reference passage:\n${hit.text.slice(0, 6000)}`,
+          specHit
+            ? `Patent specification passage, page ${specHit.page_number}:\n${specHit.text.slice(0, 2500)}`
+            : "No patent specification passage was retrieved.",
         ].join("\n\n"),
       );
       assessment = normalizeEvidenceAssessment(json, hit.page_number);

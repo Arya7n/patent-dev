@@ -84,6 +84,13 @@ function paragraph(text: string, options?: { bold?: boolean; color?: string; siz
   });
 }
 
+function isPreamble(text: string, index: number): boolean {
+  if (index !== 0) return false;
+  const trimmed = text.trim();
+  if (/^(receiving|camping|determining|transmitting|performing|sending|selecting|monitoring|applying)\b/i.test(trimmed)) return false;
+  return /comprising|processing means|storage unit|program code/i.test(trimmed);
+}
+
 function bestEvidence(chart: ClaimChart, elementId: string, documentId: string) {
   const cell = chart.cells.find((item) => item.elementId === elementId && item.documentId === documentId);
   const ranked = [...(cell?.evidence ?? [])].sort((a, b) => b.confidence - a.confidence);
@@ -95,13 +102,19 @@ export async function renderDocx(chart: ClaimChart): Promise<Buffer> {
   const rows: TableRow[] = [
     new TableRow({
       children: [
-        cell([paragraph(`Patent / matter: ${chart.targetTitle || chart.projectName}`, { bold: true, color: HEADER_BLUE, size: 22 })], "FFFFFF"),
-        cell([paragraph(chart.projectName, { bold: true })], "FFFFFF"),
+        cell([paragraph("Patent number", { bold: true })]),
+        cell([paragraph(chart.targetTitle || chart.projectName, { bold: true, color: HEADER_BLUE, size: 22 })]),
       ],
     }),
     new TableRow({
       children: [
-        cell([paragraph("References", { bold: true })]),
+        cell([paragraph("Matter", { bold: true })]),
+        cell([paragraph(chart.projectName)]),
+      ],
+    }),
+    new TableRow({
+      children: [
+        cell([paragraph("Standards / references", { bold: true })]),
         cell(
           chart.priorArt.length > 0
             ? chart.priorArt.map((document, index) => paragraph(`${index + 1}. ${document.title}`))
@@ -120,22 +133,20 @@ export async function renderDocx(chart: ClaimChart): Promise<Buffer> {
   for (const claimNumber of claimNumbers) {
     const elements = chart.elements.filter((element) => element.claimNumber === claimNumber);
     const claimText = elements[0]?.claimText || "";
-    rows.push(
-      new TableRow({
-        children: [
-          cell([
-            paragraph(`Claim ${claimNumber}`, { bold: true, color: HEADER_BLUE }),
-            paragraph(claimText),
-          ]),
-          cell([
-            paragraph(
-              "The clauses below are mapped to the cited references. Matching highlight colors mark corresponding phrases. This is research assistance, not a legal conclusion.",
-            ),
-          ]),
-        ],
-      }),
-    );
+    const preamble = isPreamble(elements[0]?.text ?? "", 0);
     elements.forEach((element, index) => {
+      const label = preamble && index === 0 ? `Claim ${claimNumber}` : `Clause ${preamble ? index : index + 1}`;
+      const left = [
+        paragraph(label, { bold: true, color: HEADER_BLUE }),
+        new Paragraph({
+          spacing: { after: 80 },
+          children: docxRuns(
+            preamble && index === 0 ? element.text || claimText : element.text,
+            chart.priorArt.flatMap((document) => bestEvidence(chart, element.id, document.id)?.alignments ?? []),
+            "claimPhrase",
+          ),
+        }),
+      ];
       const mappings = chart.priorArt.flatMap((document) => {
         const evidence = bestEvidence(chart, element.id, document.id);
         const blocks = [paragraph(document.title, { bold: true, color: HEADER_BLUE })];
@@ -157,13 +168,7 @@ export async function renderDocx(chart: ClaimChart): Promise<Buffer> {
       rows.push(
         new TableRow({
           children: [
-            cell([
-              paragraph(`Clause ${index + 1}`, { bold: true }),
-              new Paragraph({
-                spacing: { after: 80 },
-                children: docxRuns(element.text, chart.priorArt.flatMap((document) => bestEvidence(chart, element.id, document.id)?.alignments ?? []), "claimPhrase"),
-              }),
-            ]),
+            cell(left),
             cell(mappings.length > 0 ? mappings : [paragraph("No reference documents were available.")]),
           ],
         }),
@@ -212,9 +217,10 @@ export function renderPdf(chart: ClaimChart): Promise<Buffer> {
     doc.moveDown(0.3);
     doc.fillColor("#666666").fontSize(9).text(chart.disclaimer);
     doc.fillColor("#333333").moveDown();
-    doc.fontSize(12).text(`Patent / matter: ${chart.targetTitle || chart.projectName}`);
+    doc.fontSize(12).text(`Patent number: ${chart.targetTitle || chart.projectName}`);
+    doc.fontSize(11).text(`Matter: ${chart.projectName}`);
     doc.moveDown(0.4);
-    doc.fontSize(11).text("References");
+    doc.fontSize(11).text("Standards / references");
     if (chart.priorArt.length === 0) doc.fontSize(10).text("No reference documents were uploaded.");
     chart.priorArt.forEach((document, index) => doc.fontSize(10).text(`${index + 1}. ${document.title}`));
     doc.moveDown();
@@ -222,11 +228,10 @@ export function renderPdf(chart: ClaimChart): Promise<Buffer> {
     const claimNumbers = [...new Set(chart.elements.map((element) => element.claimNumber))];
     for (const claimNumber of claimNumbers) {
       const elements = chart.elements.filter((element) => element.claimNumber === claimNumber);
-      doc.fillColor("#0070C0").fontSize(13).text(`Claim ${claimNumber}`);
-      doc.fillColor("#333333").fontSize(10).text(elements[0]?.claimText || "");
-      doc.moveDown(0.4);
+      const preamble = isPreamble(elements[0]?.text ?? "", 0);
       elements.forEach((element, index) => {
-        doc.fontSize(11).text(`Clause ${index + 1}`);
+        const label = preamble && index === 0 ? `Claim ${claimNumber}` : `Clause ${preamble ? index : index + 1}`;
+        doc.fillColor("#0070C0").fontSize(13).text(label);
         writeColored(doc, element.text, chart.priorArt.flatMap((document) => bestEvidence(chart, element.id, document.id)?.alignments ?? []), "claimPhrase");
         for (const document of chart.priorArt) {
           const evidence = bestEvidence(chart, element.id, document.id);
