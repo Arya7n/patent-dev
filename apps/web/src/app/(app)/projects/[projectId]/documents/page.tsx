@@ -30,13 +30,14 @@ export default function DocumentsPage({ params }: { params: Promise<{ projectId:
   });
 
   return (
-    <main className="p-8">
-      <h1 className="font-serif text-3xl">Documents</h1>
+    <main className="px-6 py-8 sm:px-8">
+      <p className="text-xs font-medium uppercase tracking-[0.16em] text-pine">Sources</p>
+      <h1 className="mt-2 font-serif text-4xl">Documents</h1>
       <p className="mt-2 max-w-2xl text-sm text-stone-600">
         Upload the target patent and the prior art you want to compare. Processing reads the PDF, splits it into passages, and indexes those passages.
       </p>
       <form
-        className="mt-4 flex flex-wrap items-end gap-3"
+        className="mt-6 flex flex-wrap items-end gap-3 rounded-2xl border border-line bg-panel p-4 shadow-sm"
         onSubmit={(event) => {
           event.preventDefault();
           const form = event.currentTarget;
@@ -69,7 +70,7 @@ export default function DocumentsPage({ params }: { params: Promise<{ projectId:
           No documents yet. Start with the target patent PDF.
         </p>
       ) : null}
-      <ul className="mt-6 divide-y divide-line rounded border border-line bg-panel">
+      <ul className="mt-6 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-panel shadow-sm">
         {(documents.data ?? []).map((document) => (
           <li key={document.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm">
             <div>

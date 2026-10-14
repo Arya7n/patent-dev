@@ -75,7 +75,7 @@ export default function ClaimsPage({ params }: { params: Promise<{ projectId: st
 
   return (
     <div className="flex flex-col xl:grid xl:h-[calc(100vh-8.5rem)] xl:min-h-0 xl:grid-cols-[minmax(16rem,20rem)_minmax(0,1fr)_minmax(17rem,22rem)]">
-      <aside className="max-h-80 overflow-auto border-b border-line bg-panel p-4 xl:max-h-none xl:min-h-0 xl:border-b-0 xl:border-r">
+      <aside className="max-h-80 overflow-auto border-b border-line bg-[#fffcf7] p-4 xl:max-h-none xl:min-h-0 xl:border-b-0 xl:border-r">
         <div className="mb-3 flex flex-wrap gap-2">
           <button
             className="rounded border border-line px-2 py-1 text-xs"
@@ -235,7 +235,7 @@ export default function ClaimsPage({ params }: { params: Promise<{ projectId: st
           />
         </div>
       </section>
-      <aside className="max-h-[32rem] overflow-auto border-line bg-panel p-4 xl:max-h-none xl:min-h-0 xl:border-l">
+      <aside className="max-h-[32rem] overflow-auto border-line bg-[#f7f3ea] p-4 xl:max-h-none xl:min-h-0 xl:border-l">
         <h2 className="font-serif text-xl">Evidence</h2>
         <p className="mt-1 text-xs text-stone-500">Potentially relevant passages. Analyst review is required.</p>
         {selected ? <ElementEditor element={selected} onSaved={refreshClaims} onDeleted={() => { setElementId(null); refreshClaims(); }} onError={setError} /> : null}

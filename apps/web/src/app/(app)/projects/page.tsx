@@ -21,11 +21,12 @@ export default function ProjectsPage() {
     },
   });
   return (
-    <main className="p-8">
-      <h1 className="font-serif text-4xl">Projects</h1>
-      <p className="mt-2 max-w-2xl text-sm text-stone-600">Each project holds one target patent, the prior art you compare it with, and the claim chart.</p>
+    <main className="px-6 py-8 sm:px-8">
+      <p className="text-xs font-medium uppercase tracking-[0.16em] text-pine">Matters</p>
+      <h1 className="mt-2 font-serif text-4xl">Projects</h1>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">Each project holds one target patent, the prior art you compare it with, and the claim chart.</p>
       <form
-        className="mt-6 grid max-w-xl gap-2"
+        className="mt-6 grid max-w-xl gap-2 rounded-2xl border border-line bg-panel p-4 shadow-sm"
         onSubmit={(event) => {
           event.preventDefault();
           const data = new FormData(event.currentTarget);
@@ -44,12 +45,12 @@ export default function ProjectsPage() {
       {projects.isError ? <p className="mt-4 text-sm text-rose-800">{errorMessage(projects.error, "Projects could not be loaded.")}</p> : null}
       {projects.isLoading ? <p className="mt-6 text-sm text-stone-500">Loading projects…</p> : null}
       {projects.data?.length === 0 ? (
-        <p className="mt-6 rounded border border-dashed border-line bg-panel px-4 py-8 text-sm text-stone-500">No projects yet.</p>
+        <p className="mt-6 rounded-2xl border border-dashed border-line bg-panel px-4 py-10 text-sm text-stone-500">No projects yet. Name a matter above to start one.</p>
       ) : null}
-      <ul className="mt-6 divide-y divide-line rounded border border-line bg-panel">
+      <ul className="mt-6 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-panel shadow-sm">
         {(projects.data ?? []).map((project) => (
           <li key={project.id}>
-            <Link href={`/projects/${project.id}`} className="block px-4 py-3 hover:bg-stone-50">
+            <Link href={`/projects/${project.id}`} className="block px-5 py-4 hover:bg-[#faf7f1]">
               <span className="font-medium">{project.name}</span>
               <span className="mt-1 block text-sm text-stone-500">{project.description || "No description"}</span>
               <span className="mt-1 block text-xs text-stone-400">{formatWhen(project.updatedAt)}</span>

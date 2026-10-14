@@ -37,13 +37,14 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
   });
 
   return (
-    <main className="p-8">
-      <h1 className="font-serif text-3xl">Reports</h1>
+    <main className="px-6 py-8 sm:px-8">
+      <p className="text-xs font-medium uppercase tracking-[0.16em] text-pine">Export</p>
+      <h1 className="mt-2 font-serif text-4xl">Reports</h1>
       <p className="mt-2 max-w-2xl text-sm text-stone-600">
         Exports describe potentially relevant evidence. They do not state that a patent is invalid or infringed.
       </p>
       <form
-        className="mt-4 flex flex-wrap gap-2"
+        className="mt-6 flex flex-wrap gap-2 rounded-2xl border border-line bg-panel p-4 shadow-sm"
         onSubmit={(event) => {
           event.preventDefault();
           const form = event.currentTarget;
@@ -64,7 +65,7 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
           No reports yet. Generate one after the claim chart has evidence.
         </p>
       ) : null}
-      <ul className="mt-6 divide-y divide-line rounded border border-line bg-panel">
+      <ul className="mt-6 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-panel shadow-sm">
         {(reports.data ?? []).map((report) => {
           const ready = report.status === "completed";
           return (

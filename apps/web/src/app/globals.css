@@ -3,13 +3,57 @@
 @tailwind utilities;
 
 body {
-  background: #f6f3ec;
   color: #1c1915;
+  background:
+    radial-gradient(900px 420px at 0% -10%, rgba(31, 75, 58, 0.09), transparent 55%),
+    radial-gradient(700px 360px at 100% 0%, rgba(176, 137, 74, 0.12), transparent 50%),
+    #f3efe6;
 }
 
 button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
+}
+
+input:not([type="file"]):not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  border-radius: 0.7rem;
+  border: 1px solid #e4ddd2;
+  background: #fffcf7;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+input:not([type="file"]):not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid rgba(31, 75, 58, 0.22);
+  outline-offset: 1px;
+  border-color: #1f4b3a;
+}
+
+button.bg-pine,
+a.bg-pine {
+  border-radius: 0.7rem;
+  background-image: linear-gradient(180deg, #2a6854 0%, #1f4b3a 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 1px 2px rgba(28, 25, 21, 0.16);
+}
+
+button.bg-pine:hover,
+a.bg-pine:hover {
+  background-image: linear-gradient(180deg, #245646 0%, #17382c 100%);
+}
+
+button.border-line,
+a.border-line {
+  background: #fffcf7;
+  border-radius: 0.7rem;
+  box-shadow: 0 1px 1px rgba(28, 25, 21, 0.04);
+}
+
+button.border-line:hover,
+a.border-line:hover {
+  background: #f7f3ea;
 }
 
 .react-pdf__Page {
