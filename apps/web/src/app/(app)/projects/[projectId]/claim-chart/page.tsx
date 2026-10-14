@@ -21,10 +21,11 @@ export default function ClaimChartPage({ params }: { params: Promise<{ projectId
   const claimNumbers = [...new Set((data?.elements ?? []).map((element) => element.claimNumber))];
 
   return (
-    <main className="p-6">
+    <main className="px-6 py-8 sm:px-8">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="font-serif text-3xl">Claim chart</h1>
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-pine">Mapping</p>
+          <h1 className="mt-2 font-serif text-4xl">Claim chart</h1>
           <p className="mt-2 max-w-3xl text-sm text-stone-600">{data?.disclaimer}</p>
         </div>
         <Link href={`/projects/${projectId}/reports`} className="rounded bg-pine px-4 py-2 text-sm text-white">
@@ -36,7 +37,7 @@ export default function ClaimChartPage({ params }: { params: Promise<{ projectId
         <p className="mt-6 text-sm text-stone-500">Decompose at least one claim before this chart has rows.</p>
       ) : null}
       {data ? (
-        <section className="mt-6 overflow-hidden rounded border border-line bg-white">
+        <section className="mt-6 overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
           <header className="grid gap-4 border-b border-line p-4 md:grid-cols-2">
             <div>
               <p className="text-xs uppercase tracking-wide text-stone-500">Patent / matter</p>

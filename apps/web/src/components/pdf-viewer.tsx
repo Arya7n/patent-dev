@@ -66,8 +66,8 @@ export function PdfViewer({
   const scale = pageWidth > 0 ? displayWidth / pageWidth : 1;
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-stone-200/70">
-      <div className="flex flex-wrap items-center gap-2 border-b border-line bg-panel px-3 py-2 text-sm">
+    <div className="flex h-full min-h-0 flex-col bg-[#e7e1d6]">
+      <div className="flex flex-wrap items-center gap-2 border-b border-line bg-[#fffcf7] px-3 py-2 text-sm">
         <div className="flex items-center gap-1">
           <button className="rounded border border-line bg-white px-2 py-1" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1}>
             Previous

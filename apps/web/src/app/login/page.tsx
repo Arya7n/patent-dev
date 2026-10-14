@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { AuthFrame } from "@/components/auth-frame";
 import { api } from "@/lib/api";
 
 export default function LoginPage() {
@@ -11,9 +11,13 @@ export default function LoginPage() {
   const [pending, setPending] = useState(false);
 
   return (
-    <main className="mx-auto grid min-h-screen max-w-md place-items-center px-6">
+    <AuthFrame
+      title="Sign in"
+      lede="Open the matters already in this workspace."
+      alternate={{ href: "/register", label: "Create an account", prompt: "New here?" }}
+    >
       <form
-        className="w-full rounded border border-line bg-panel p-8"
+        className="grid gap-4"
         onSubmit={(event) => {
           event.preventDefault();
           const data = new FormData(event.currentTarget);
@@ -30,22 +34,19 @@ export default function LoginPage() {
             });
         }}
       >
-        <h1 className="font-serif text-3xl">Sign in</h1>
-        <p className="mt-2 text-sm text-stone-600">Patent research workspace for analysts.</p>
-        <label className="mt-6 block text-sm">
+        <label className="block text-sm">
           Email
-          <input name="email" type="email" required className="mt-1 w-full rounded border border-line px-3 py-2" />
+          <input name="email" type="email" required className="mt-1 w-full px-3 py-2.5" />
         </label>
-        <label className="mt-4 block text-sm">
+        <label className="block text-sm">
           Password
-          <input name="password" type="password" required className="mt-1 w-full rounded border border-line px-3 py-2" />
+          <input name="password" type="password" required className="mt-1 w-full px-3 py-2.5" />
         </label>
-        {error ? <p className="mt-3 text-sm text-rose-800">{error}</p> : null}
-        <button disabled={pending} className="mt-6 rounded bg-pine px-4 py-2 text-sm text-white">{pending ? "Signing in…" : "Continue"}</button>
-        <p className="mt-4 text-sm">
-          <Link href="/register" className="underline">Create an account</Link>
-        </p>
+        {error ? <p className="text-sm text-rose-800">{error}</p> : null}
+        <button disabled={pending} className="mt-2 bg-pine px-4 py-2.5 text-sm text-white">
+          {pending ? "Signing in…" : "Continue"}
+        </button>
       </form>
-    </main>
+    </AuthFrame>
   );
 }

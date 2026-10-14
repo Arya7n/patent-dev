@@ -39,10 +39,11 @@ export default function ProjectOverview({ params }: { params: Promise<{ projectI
   ];
 
   return (
-    <main className="p-8">
+    <main className="px-6 py-8 sm:px-8">
       {project.isError ? <p className="text-sm text-rose-800">{errorMessage(project.error, "This project could not be loaded.")}</p> : null}
-      <h1 className="font-serif text-4xl">{project.data?.name ?? (project.isLoading ? "Loading…" : "Project")}</h1>
-      <p className="mt-2 max-w-2xl text-sm text-stone-600">{project.data?.description || "No description yet."}</p>
+      <p className="text-xs font-medium uppercase tracking-[0.16em] text-pine">Matter</p>
+      <h1 className="mt-2 font-serif text-4xl">{project.data?.name ?? (project.isLoading ? "Loading…" : "Project")}</h1>
+      <p className="mt-2 max-w-2xl text-sm leading-6 text-stone-600">{project.data?.description || "No description yet."}</p>
       <div className="mt-6 grid gap-3 sm:grid-cols-3">
         <Stat label="Documents" value={documents.data ? String(docs.length) : "—"} />
         <Stat label="Claims" value={claims.data ? String(claimCount) : "—"} />
@@ -51,7 +52,7 @@ export default function ProjectOverview({ params }: { params: Promise<{ projectI
       <ol className="mt-8 grid max-w-xl gap-2">
         {steps.map((step, index) => (
           <li key={step.label}>
-            <Link href={step.href} className="flex items-center gap-3 rounded border border-line bg-panel px-4 py-3 text-sm hover:bg-stone-50">
+            <Link href={step.href} className="flex items-center gap-3 rounded-2xl border border-line bg-panel px-4 py-3 text-sm shadow-sm hover:bg-[#faf7f1]">
               <span className={`grid h-6 w-6 place-items-center rounded-full text-xs ${step.done ? "bg-pine text-white" : "bg-stone-200 text-stone-700"}`}>
                 {index + 1}
               </span>
@@ -62,7 +63,7 @@ export default function ProjectOverview({ params }: { params: Promise<{ projectI
       </ol>
       <ul className="mt-8 grid max-w-xl gap-2 text-sm">
         {docs.map((document) => (
-          <li key={document.id} className="flex justify-between rounded border border-line bg-panel px-4 py-2">
+          <li key={document.id} className="flex justify-between gap-3 rounded-2xl border border-line bg-panel px-4 py-3 shadow-sm">
             <span>{document.title || document.originalFilename}</span>
             <span className="text-stone-500">{documentRoleLabel(document.role)} · {documentStatusLabel(document.status)}</span>
           </li>
@@ -74,7 +75,7 @@ export default function ProjectOverview({ params }: { params: Promise<{ projectI
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded border border-line bg-panel p-4">
+    <div className="rounded-2xl border border-line bg-panel p-4 shadow-sm">
       <p className="text-xs uppercase tracking-wide text-stone-500">{label}</p>
       <p className="mt-2 font-serif text-2xl">{value}</p>
     </div>
