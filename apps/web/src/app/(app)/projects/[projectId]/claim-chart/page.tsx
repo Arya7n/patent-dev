@@ -64,21 +64,15 @@ export default function ClaimChartPage({ params }: { params: Promise<{ projectId
               <tbody>
                 {claimNumbers.map((claimNumber) => {
                   const elements = (data.elements ?? []).filter((element) => element.claimNumber === claimNumber);
+                  const preamble = isPreamble(elements[0]?.text ?? "");
                   return (
                     <Fragment key={claimNumber}>
-                      <tr className="bg-stone-50">
-                        <td className="border border-line p-3 align-top">
-                          <p className="font-medium text-[#0070C0]">Claim {claimNumber}</p>
-                          <p className="mt-2 whitespace-pre-wrap leading-6">{elements[0]?.claimText || elements[0]?.text}</p>
-                        </td>
-                        <td className="border border-line p-3 align-top text-stone-600">
-                          Matching highlight colors mark a claim phrase and the corresponding words in the cited passage.
-                        </td>
-                      </tr>
                       {elements.map((element, index) => (
                         <tr key={element.id}>
                           <td className="border border-line p-3 align-top">
-                            <p className="font-medium">Clause {index + 1}</p>
+                            <p className="font-medium text-[#0070C0]">
+                              {preamble && index === 0 ? `Claim ${claimNumber}` : `Clause ${preamble ? index : index + 1}`}
+                            </p>
                             <p className="mt-2 leading-6">
                               <HighlightedText
                                 text={element.text}
@@ -130,6 +124,12 @@ export default function ClaimChartPage({ params }: { params: Promise<{ projectId
       ) : null}
     </main>
   );
+}
+
+function isPreamble(text: string): boolean {
+  const trimmed = text.trim();
+  if (/^(receiving|camping|determining|transmitting|performing|sending|selecting|monitoring|applying)\b/i.test(trimmed)) return false;
+  return /comprising|processing means|storage unit|program code/i.test(trimmed);
 }
 
 function bestEvidence(chart: ClaimChart, elementId: string, documentId: string): Evidence | null {
