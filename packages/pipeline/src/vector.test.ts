@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { estimateCost, hashEmbedding } from "./ai";
+import { estimateCost, hashEmbedding, retryDelayMs } from "./ai";
 import { toVectorLiteral } from "./vector";
 
 describe("embeddings", () => {
@@ -28,5 +28,13 @@ describe("embeddings", () => {
         embeddingPerMillion: 0.15,
       }, "embedding"),
     ).toBeCloseTo(0.3);
+  });
+
+  it("waits longer after each rate-limit response", () => {
+    expect(retryDelayMs("3", 1)).toBe(3000);
+    expect(retryDelayMs("90", 1)).toBe(45_000);
+    expect(retryDelayMs(null, 1)).toBe(2000);
+    expect(retryDelayMs(null, 3)).toBe(8000);
+    expect(retryDelayMs("later", 4)).toBe(16_000);
   });
 });

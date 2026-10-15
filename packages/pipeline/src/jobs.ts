@@ -231,8 +231,8 @@ async function embedDocument(
     pending.push(chunk);
   }
 
-  for (let index = 0; index < pending.length; index += 16) {
-    const batch = pending.slice(index, index + 16);
+  for (let index = 0; index < pending.length; index += 8) {
+    const batch = pending.slice(index, index + 8);
     const embedded = await ctx.ai.embed(batch.map((chunk) => chunk.text));
     await recordUsage(ctx, {
       organizationId,
