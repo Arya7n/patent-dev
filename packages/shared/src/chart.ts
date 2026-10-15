@@ -105,3 +105,22 @@ export function buildClaimChart(input: {
     cells,
   };
 }
+
+const PUBLICATION_NUMBER = /(?:^|[^A-Z0-9])(US|EP|WO|CN|JP|KR)\s?-?\s?(\d{4,12})([A-Z]\d?)?(?!\d)/i;
+
+export function patentLabel(filename: string | null | undefined, title: string | null | undefined): string | null {
+  const fromFile = publicationNumber(filename ?? "");
+  if (fromFile) return fromFile;
+  const fromTitle = publicationNumber(title ?? "");
+  if (fromTitle) return fromTitle;
+  const cleaned = title?.replace(/\s+/g, " ").trim();
+  if (cleaned && !/^\d[\d-]{8,}$/.test(cleaned)) return cleaned;
+  const fallback = filename?.replace(/\.pdf$/i, "").trim();
+  return fallback || cleaned || null;
+}
+
+function publicationNumber(value: string): string | null {
+  const match = value.match(PUBLICATION_NUMBER);
+  if (!match) return null;
+  return `${match[1]}${match[2]}${match[3] ?? ""}`.replace(/[\s-]+/g, "").toUpperCase();
+}

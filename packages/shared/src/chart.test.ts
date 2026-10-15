@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildClaimChart } from "./chart";
+import { buildClaimChart, patentLabel } from "./chart";
 
 describe("buildClaimChart", () => {
   it("shows the analyst decision and keeps the quoted passage", () => {
@@ -26,5 +26,11 @@ describe("buildClaimChart", () => {
     expect(chart.cells[0].relationship).toBe("strong_match");
     expect(chart.cells[0].evidence[0].pageNumber).toBe(17);
     expect(chart.cells[0].evidence[0].text).toContain("sensor data");
+  });
+
+  it("reads a publication number from the filename when the PDF title is not one", () => {
+    expect(patentLabel("US8726946.pdf", "1499085511429799000-08726946")).toBe("US8726946");
+    expect(patentLabel("CC_HTC_US9320057B2_5G.pdf", null)).toBe("US9320057B2");
+    expect(patentLabel("notes.pdf", "Bottle filling method")).toBe("Bottle filling method");
   });
 });

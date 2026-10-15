@@ -34,14 +34,17 @@ export default function ClaimChartPage({ params }: { params: Promise<{ projectId
       </div>
       {chart.isError ? <p className="mt-4 text-sm text-rose-800">{errorMessage(chart.error, "The claim chart could not be loaded.")}</p> : null}
       {data && data.elements.length === 0 ? (
-        <p className="mt-6 text-sm text-stone-500">Decompose at least one claim before this chart has rows.</p>
+        <p className="mt-6 max-w-3xl text-sm text-stone-500">
+          Decompose a claim on the Claims page so each clause becomes a row. Then process a reference PDF. The Mapping column quotes that reference, highlights the matching phrases, and ends with whether the reference reads on the clause.
+        </p>
       ) : null}
       {data ? (
         <section className="mt-6 overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
           <header className="grid gap-4 border-b border-line p-4 md:grid-cols-2">
             <div>
-              <p className="text-xs uppercase tracking-wide text-stone-500">Patent / matter</p>
+              <p className="text-xs uppercase tracking-wide text-stone-500">Patent number</p>
               <p className="mt-1 font-medium text-[#0070C0]">{data.targetTitle || data.projectName}</p>
+              <p className="mt-1 text-sm text-stone-500">{data.projectName}</p>
             </div>
             <div>
               <p className="text-xs uppercase tracking-wide text-stone-500">References</p>
