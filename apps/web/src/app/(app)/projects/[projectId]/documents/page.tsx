@@ -98,7 +98,7 @@ export default function DocumentsPage({ params }: { params: Promise<{ projectId:
                   setError(null);
                   setMessage(`Processing ${document.originalFilename}…`);
                   void api<{ jobId: string }>(`/documents/${document.id}/process`, { method: "POST" })
-                    .then((job) => waitForJob(job.jobId))
+                    .then((job) => waitForJob(job.jobId, 360_000))
                     .then(() => {
                       setMessage(`${document.originalFilename} is ready.`);
                       void client.invalidateQueries({ queryKey: ["documents", projectId] });
@@ -111,7 +111,11 @@ export default function DocumentsPage({ params }: { params: Promise<{ projectId:
                     .finally(() => setBusyId(null));
                 }}
               >
-                {busyId === document.id || isDocumentBusy(document.status) ? "Processing…" : "Process"}
+                {busyId === document.id || isDocumentBusy(document.status)
+                  ? "Processing…"
+                  : document.status === "failed"
+                    ? "Retry"
+                    : "Process"}
               </button>
             </div>
           </li>

@@ -40,6 +40,56 @@ export function cacheKey(model: string, operation: string, prompt: string): stri
   return createHash("sha256").update(`${model}\n${operation}\n${prompt}`).digest("hex");
 }
 
+const RETRYABLE_STATUS = new Set([429, 500, 503]);
+
+export function retryDelayMs(retryAfter: string | null, attempt: number): number {
+  const seconds = retryAfter ? Number(retryAfter) : Number.NaN;
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.min(Math.ceil(seconds * 1000), 45_000);
+  const httpDate = retryAfter ? Date.parse(retryAfter) : Number.NaN;
+  if (Number.isFinite(httpDate)) return Math.min(Math.max(0, httpDate - Date.now()), 45_000);
+  return Math.min(2_000 * 2 ** Math.max(0, attempt - 1), 20_000);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function providerMessage(payload: unknown, status: number): string {
+  if (payload && typeof payload === "object" && "error" in payload) {
+    const message = (payload as { error?: { message?: string } }).error?.message;
+    if (message) return message.replace(/\s+/g, " ").trim().slice(0, 180);
+  }
+  return `request failed (${status})`;
+}
+
+let nextEmbeddingAt = 0;
+
+async function paceEmbeddings(): Promise<void> {
+  const now = Date.now();
+  const wait = nextEmbeddingAt - now;
+  nextEmbeddingAt = Math.max(nextEmbeddingAt, now) + 700;
+  if (wait > 0) await sleep(wait);
+}
+
+async function postJson(url: string, init: RequestInit, label: string): Promise<unknown> {
+  const attempts = 5;
+  let lastStatus = 0;
+  let lastDetail = "request failed";
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const response = await fetch(url, init);
+    const payload = (await response.json().catch(() => null)) as unknown;
+    if (response.ok) return payload;
+    lastStatus = response.status;
+    lastDetail = providerMessage(payload, response.status);
+    if (!RETRYABLE_STATUS.has(response.status) || attempt === attempts) break;
+    await sleep(retryDelayMs(response.headers.get("retry-after"), attempt));
+  }
+  if (lastStatus === 429) {
+    throw new Error(`${label} quota was reached. ${lastDetail} Wait a minute, then try again.`);
+  }
+  throw new Error(`${label} failed (${lastStatus})`);
+}
+
 export function createAi(env: RuntimeEnv): AiClient {
   if (env.AI_PROVIDER === "openai" && env.OPENAI_API_KEY) {
     return new OpenAiClient(env);
@@ -118,7 +168,7 @@ class GeminiClient implements AiClient {
   }
 
   async generateJson(prompt: string): Promise<{ text: string; usage: TokenUsage }> {
-    const response = await fetch(
+    const payload = (await postJson(
       `https://generativelanguage.googleapis.com/v1beta/models/${this.chatModel}:generateContent`,
       {
         method: "POST",
@@ -131,9 +181,8 @@ class GeminiClient implements AiClient {
           generationConfig: { temperature: 0.1, responseMimeType: "application/json" },
         }),
       },
-    );
-    const payload = (await response.json()) as GeminiResponse;
-    if (!response.ok) throw new Error(`Model request failed (${response.status})`);
+      "Model request",
+    )) as GeminiResponse;
     const text = payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
     return {
       text,
@@ -146,7 +195,8 @@ class GeminiClient implements AiClient {
 
   async embed(texts: string[]): Promise<{ vectors: number[][]; usage: TokenUsage }> {
     if (texts.length === 0) return { vectors: [], usage: { inputTokens: 0, outputTokens: 0 } };
-    const response = await fetch(
+    await paceEmbeddings();
+    const payload = (await postJson(
       `https://generativelanguage.googleapis.com/v1beta/models/${this.embeddingModel}:batchEmbedContents`,
       {
         method: "POST",
@@ -162,11 +212,10 @@ class GeminiClient implements AiClient {
           })),
         }),
       },
-    );
-    const payload = (await response.json()) as {
+      "Embedding request",
+    )) as {
       embeddings?: { values?: number[] }[];
     };
-    if (!response.ok) throw new Error(`Embedding request failed (${response.status})`);
     const vectors = (payload.embeddings ?? []).map((item) => item.values ?? []);
     if (vectors.length !== texts.length) throw new Error("Embedding response did not match the input");
     const inputTokens = texts.reduce((sum, text) => sum + Math.ceil(text.length / 4), 0);
@@ -186,24 +235,26 @@ class OpenAiClient implements AiClient {
   }
 
   async generateJson(prompt: string): Promise<{ text: string; usage: TokenUsage }> {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
+    const payload = (await postJson(
+      "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: this.chatModel,
+          temperature: 0.1,
+          response_format: { type: "json_object" },
+          messages: [{ role: "user", content: prompt }],
+        }),
       },
-      body: JSON.stringify({
-        model: this.chatModel,
-        temperature: 0.1,
-        response_format: { type: "json_object" },
-        messages: [{ role: "user", content: prompt }],
-      }),
-    });
-    const payload = (await response.json()) as {
+      "Model request",
+    )) as {
       choices?: { message?: { content?: string } }[];
       usage?: { prompt_tokens?: number; completion_tokens?: number };
     };
-    if (!response.ok) throw new Error(`Model request failed (${response.status})`);
     return {
       text: payload.choices?.[0]?.message?.content ?? "",
       usage: {
@@ -215,23 +266,26 @@ class OpenAiClient implements AiClient {
 
   async embed(texts: string[]): Promise<{ vectors: number[][]; usage: TokenUsage }> {
     if (texts.length === 0) return { vectors: [], usage: { inputTokens: 0, outputTokens: 0 } };
-    const response = await fetch("https://api.openai.com/v1/embeddings", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
+    await paceEmbeddings();
+    const payload = (await postJson(
+      "https://api.openai.com/v1/embeddings",
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${this.env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: this.embeddingModel,
+          input: texts,
+          dimensions: this.env.EMBEDDING_DIMENSIONS,
+        }),
       },
-      body: JSON.stringify({
-        model: this.embeddingModel,
-        input: texts,
-        dimensions: this.env.EMBEDDING_DIMENSIONS,
-      }),
-    });
-    const payload = (await response.json()) as {
+      "Embedding request",
+    )) as {
       data?: { embedding?: number[]; index?: number }[];
       usage?: { prompt_tokens?: number };
     };
-    if (!response.ok) throw new Error(`Embedding request failed (${response.status})`);
     const ordered = [...(payload.data ?? [])].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
     return {
       vectors: ordered.map((item) => item.embedding ?? []),
