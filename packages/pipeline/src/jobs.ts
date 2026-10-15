@@ -19,6 +19,7 @@ import {
 import {
   buildClaimChart,
   decideInvalidModelOutput,
+  patentLabel,
   evidenceRelationships,
   extractClaimsFromSections,
   extractJsonObject,
@@ -182,7 +183,7 @@ export async function processDocument(ctx: PipelineContext, documentId: string) 
       .set({
         status: "ocr_required",
         pageCount: extraction.pageCount,
-        title: extraction.metadata?.title || document.originalFilename,
+        title: patentLabel(document.originalFilename, extraction.metadata?.title) || document.originalFilename,
         abstractText,
         error: "Little or no text was extracted. Install Tesseract and OCRmyPDF, then retry.",
         updatedAt: new Date(),
@@ -200,7 +201,7 @@ export async function processDocument(ctx: PipelineContext, documentId: string) 
     .update(documents)
     .set({
       status: "completed",
-      title: extraction.metadata?.title || document.title || document.originalFilename,
+      title: patentLabel(document.originalFilename, extraction.metadata?.title || document.title) || document.originalFilename,
       abstractText,
       error: lowText ? "Text was extracted, but OCR may recover more from scanned pages." : null,
       metadata: { ocrApplied, ocrRecommended: lowText },
@@ -621,11 +622,14 @@ export async function loadClaimChart(db: Database, projectId: string): Promise<C
   const target = priorArt.find((document) => document.role === "target");
   return buildClaimChart({
     projectName: project.name,
-    targetTitle: target?.title || target?.originalFilename || null,
+    targetTitle: target ? patentLabel(target.originalFilename, target.title) : null,
     elements: elementRows,
     priorArt: priorArt
       .filter((document) => document.role === "prior_art" || document.role === "reference")
-      .map((document) => ({ id: document.id, title: document.title || document.originalFilename })),
+      .map((document) => ({
+        id: document.id,
+        title: patentLabel(document.originalFilename, document.title) || document.originalFilename,
+      })),
     links: linkRows.map((row) => ({
       elementId: row.elementId,
       documentId: row.documentId,

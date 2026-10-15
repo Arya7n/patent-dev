@@ -16,7 +16,7 @@ import { ApiBody, ApiConsumes, ApiCookieAuth, ApiProperty, ApiTags } from "@nest
 import { IsIn, IsString } from "class-validator";
 import { asc, eq } from "drizzle-orm";
 import { documentChunks, documentPages, documents } from "@patent/db";
-import { documentRoles, safeFilename, type DocumentRole } from "@patent/shared";
+import { documentRoles, patentLabel, safeFilename, type DocumentRole } from "@patent/shared";
 import { signDownload, verifyDownload } from "@patent/storage";
 import { AccessService } from "../access/access.service";
 import { Public } from "../auth/public.decorator";
@@ -99,13 +99,14 @@ export class DocumentsController {
   @Get("projects/:id/documents")
   async list(@CurrentUser() user: AuthUser, @Param("id", ParseUUIDPipe) projectId: string) {
     await this.access.project(user.id, projectId, "read");
-    return this.context.db.select().from(documents).where(eq(documents.projectId, projectId)).orderBy(asc(documents.createdAt));
+    const rows = await this.context.db.select().from(documents).where(eq(documents.projectId, projectId)).orderBy(asc(documents.createdAt));
+    return rows.map((document) => this.present(document));
   }
 
   @ApiCookieAuth()
   @Get("documents/:id")
   async get(@CurrentUser() user: AuthUser, @Param("id", ParseUUIDPipe) id: string) {
-    return this.loadReadable(user.id, id);
+    return this.present(await this.loadReadable(user.id, id));
   }
 
   @ApiCookieAuth()
@@ -187,6 +188,10 @@ export class DocumentsController {
       type: "application/pdf",
       disposition: `inline; filename="${safeFilename(document.originalFilename)}"`,
     });
+  }
+
+  private present<T extends { originalFilename: string; title: string | null }>(document: T): T {
+    return { ...document, title: patentLabel(document.originalFilename, document.title) };
   }
 
   private async loadReadable(userId: string, id: string) {
