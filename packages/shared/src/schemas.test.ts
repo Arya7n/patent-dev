@@ -32,16 +32,24 @@ describe("normalizeEvidenceAssessment", () => {
         relationship: "STRONG_MATCH",
         confidence: 1.4,
         reasoning: "The passage describes receiving sensor data.",
+        commentary: "Match. Hence, the cited reference reads over Clause 1.",
         evidenceText: "a processor receives sensor data",
         sourcePage: 17,
+        alignments: [{ claimPhrase: "sensor data", sourcePhrase: "sensor data", color: "FFFFCC" }],
       },
       1,
+      {
+        claimText: "Receive sensor data",
+        passageText: "a processor receives sensor data from the hub",
+        rowLabel: "Clause 1",
+      },
     );
     expect(parsed.success).toBe(true);
     if (!parsed.success) return;
     expect(parsed.data.relationship).toBe("strong_match");
     expect(parsed.data.confidence).toBe(1);
     expect(parsed.data.sourcePage).toBe(17);
+    expect(parsed.data.alignments).toHaveLength(1);
   });
 
   it("falls back to needs review when the label is missing", () => {
