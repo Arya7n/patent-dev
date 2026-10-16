@@ -124,3 +124,4 @@ function publicationNumber(value: string): string | null {
   if (!match) return null;
   return `${match[1]}${match[2]}${match[3] ?? ""}`.replace(/[\s-]+/g, "").toUpperCase();
 }
+

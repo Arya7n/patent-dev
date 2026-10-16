@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import {
   aiResultCache,
   aiUsage,
@@ -18,7 +18,9 @@ import {
 } from "@patent/db";
 import {
   buildClaimChart,
+  chartRowLabel,
   decideInvalidModelOutput,
+  decompositionLooksFragmented,
   patentLabel,
   evidenceRelationships,
   extractClaimsFromSections,
@@ -333,21 +335,47 @@ export async function decomposeClaim(ctx: PipelineContext, claimId: string) {
   if (!project) throw new Error("Project not found");
   const existing = await ctx.db.select().from(claimElements).where(eq(claimElements.claimId, claimId));
   if (existing.length > 0) return;
-  const json = await generateObject(
-    ctx,
-    { organizationId: project.organizationId, projectId: project.id, operation: "decompose_claim" },
-    [
-      "Split this claim into chart rows, in order, using the claim's own wording.",
-      "If the claim introduces an apparatus and then lists steps, the first element is only the preamble: the apparatus, the processing or storage elements, and the words through 'comprising' or 'wherein the program code instructs'.",
-      "Each later step, such as receiving, camping, determining, or transmitting, is its own element. Keep that whole step together.",
-      "Do not split one step into separate noun phrases. Do not paraphrase.",
-      "Return JSON {\"claimNumber\":1,\"elements\":[{\"id\":\"E1\",\"text\":\"...\",\"type\":\"component|function|relationship|limitation|other\"}]}",
-      `Claim number: ${claim.claimNumber}`,
-      `Claim text: ${claim.text}`,
-    ].join("\n\n"),
+
+  const basePrompt = [
+    "You are preparing rows for a professional two-column claim chart used by patent research analysts.",
+    "Split this claim into chart rows, in order, using exact contiguous wording copied from the claim.",
+    "Row 1 is the preamble when the claim introduces an apparatus, method, system, or device, including processing/storage language through 'comprising', 'comprising the steps of', or 'wherein the program code instructs'.",
+    "Each later limitation or step is its own row. Keep each step whole, including its wherein clauses.",
+    "Do not invent wording. Do not paraphrase. Do not split a step into bare noun phrases such as 'a frame' or 'a wheel'.",
+    "Dependent claims that only add one limitation may be a single row.",
+    "Return JSON {\"claimNumber\":1,\"elements\":[{\"id\":\"E1\",\"text\":\"...\",\"type\":\"component|function|relationship|limitation|other\"}]}",
+    `Claim number: ${claim.claimNumber}`,
+    `Claim text: ${claim.text}`,
+  ].join("\n\n");
+
+  let parsed = normalizeClaimDecomposition(
+    await generateObject(ctx, {
+      organizationId: project.organizationId,
+      projectId: project.id,
+      operation: "decompose_claim",
+    }, basePrompt),
   );
-  const parsed = normalizeClaimDecomposition(json);
+  if (
+    parsed.success &&
+    decompositionLooksFragmented(claim.text, parsed.data.elements)
+  ) {
+    parsed = normalizeClaimDecomposition(
+      await generateObject(ctx, {
+        organizationId: project.organizationId,
+        projectId: project.id,
+        operation: "decompose_claim_retry",
+      }, [
+        basePrompt,
+        "Your previous split was too fragmented or not exact claim text.",
+        "Retry with fewer rows. Every element text must be an exact contiguous excerpt from the claim.",
+        "Keep each functional step intact.",
+      ].join("\n\n")),
+    );
+  }
   if (!parsed.success) throw new Error("Claim decomposition could not be validated. Analyst review required.");
+  if (decompositionLooksFragmented(claim.text, parsed.data.elements)) {
+    throw new Error("Claim decomposition was too fragmented. Analyst review required.");
+  }
   for (const [index, element] of parsed.data.elements.entries()) {
     await ctx.db.insert(claimElements).values({
       claimId,
@@ -385,10 +413,26 @@ export async function mapElement(ctx: PipelineContext, elementId: string) {
     kind: "embedding",
   });
   const vector = embedded.vectors[0] ?? [];
+  const siblingElements = await ctx.db
+    .select()
+    .from(claimElements)
+    .where(eq(claimElements.claimId, claim.id))
+    .orderBy(asc(claimElements.sortOrder));
+  const elementIndex = siblingElements.findIndex((row) => row.id === element.id);
+  const rowLabel = chartRowLabel(
+    claim.claimNumber,
+    Math.max(0, elementIndex),
+    element.text,
+    siblingElements[0]?.text ?? element.text,
+  );
   const hits = [];
   for (const document of searchable) {
-    const found = await searchSimilarChunks(ctx.db, vector, [document.id], 3);
-    hits.push(...found);
+    const found = await searchSimilarChunks(ctx.db, vector, [document.id], 5);
+    const ranked = found
+      .filter((hit) => hit.score >= 0.22)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 2);
+    hits.push(...(ranked.length > 0 ? ranked : found.slice(0, 1)));
   }
   const target = priorArt.find((document) => document.role === "target" && document.status === "completed");
   const specHit = target ? (await searchSimilarChunks(ctx.db, vector, [target.id], 1))[0] : undefined;
@@ -400,16 +444,18 @@ export async function mapElement(ctx: PipelineContext, elementId: string) {
         ctx,
         { organizationId: project.organizationId, projectId: project.id, operation: "classify_evidence" },
         [
-          "Write the mapping comment for one row of a professional claim chart.",
-          "The left column is the claim clause. The right column quotes the reference, then explains the correspondence.",
-          "Do not say a patent is invalid, infringed, essential, or patentable.",
-          "evidenceText must be a verbatim quote from the reference passage, long enough to show the mapped feature.",
-          "commentary has three parts. First, for each alignment, one sentence in this shape: '<claim phrase>' in this clause corresponds to '<reference phrase>' in the reference.",
-          "Second, one plain-language paragraph on the technical correspondence. Quote the patent specification passage only when one is provided, and cite that page. Do not invent column numbers or line numbers.",
-          "Third, end with exactly one of: 'Hence, the cited reference reads on this clause.' or 'Hence, the cited reference does not read on this clause.' or 'Analyst review is required.'",
-          "Cite a section number only when that number appears in the passage.",
+          "Write the Mapping cell for one row of a professional patent claim chart.",
+          "Tone: careful patent research analyst. No firm name. No legal conclusion of invalidity, infringement, essentiality, or patentability.",
+          "evidenceText must be a verbatim quote copied from the reference passage below. Prefer the longest continuous quote that shows the mapped feature. Do not invent section numbers, column numbers, or line numbers.",
+          "commentary has three parts:",
+          "1) For each alignment, one sentence: \"'<claim phrase>' in this clause corresponds to '<reference phrase>' in the reference.\"",
+          "2) One technical correspondence paragraph. Quote the patent specification only when a passage is provided, and cite that page only.",
+          `3) End with exactly one of: "Hence, the cited reference reads over ${rowLabel}." or "Hence, the cited reference does not read over ${rowLabel}." or "Analyst review is required."`,
+          "Cite a section number only when that exact number appears in the reference passage.",
+          "If the passage does not teach the clause, choose NO_EVIDENCE or WEAK_MATCH and say the reference does not read over the row. Do not force a match.",
           "alignments pair a phrase that appears in the clause with a phrase that appears in the reference passage. Use one fill color per concept: FFFFCC, C5E0B3, FFCCFF, BDD6EE, F7CAAC, F4B083, FFE599, FFDBB7, 00B0F0, 66FFFF, EF89A1, D0CECE, 9CC2E5.",
           "Return JSON with relationship (STRONG_MATCH, PARTIAL_MATCH, WEAK_MATCH, NO_EVIDENCE, or NEEDS_REVIEW), confidence from 0 to 1, reasoning as one sentence, commentary, evidenceText, sourcePage, and alignments as {claimPhrase, sourcePhrase, color}.",
+          `Chart row: ${rowLabel}`,
           `Claim clause: ${element.text}`,
           `Reference page: ${hit.page_number}`,
           `Reference passage:\n${hit.text.slice(0, 6000)}`,
@@ -418,9 +464,17 @@ export async function mapElement(ctx: PipelineContext, elementId: string) {
             : "No patent specification passage was retrieved.",
         ].join("\n\n"),
       );
-      assessment = normalizeEvidenceAssessment(json, hit.page_number);
+      assessment = normalizeEvidenceAssessment(json, hit.page_number, {
+        claimText: element.text,
+        passageText: hit.text,
+        rowLabel,
+      });
     } catch {
-      assessment = normalizeEvidenceAssessment(null, hit.page_number);
+      assessment = normalizeEvidenceAssessment(null, hit.page_number, {
+        claimText: element.text,
+        passageText: hit.text,
+        rowLabel,
+      });
     }
     const data = assessment.success
       ? assessment.data

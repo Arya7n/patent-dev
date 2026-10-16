@@ -108,6 +108,38 @@ export default function ClaimsPage({ params }: { params: Promise<{ projectId: st
           </button>
           <button
             className="rounded border border-line px-2 py-1 text-xs"
+            disabled={
+              pending === "decompose-all" ||
+              (claims.data ?? []).filter((claim) => claim.isIndependent && claim.elements.length === 0).length === 0
+            }
+            onClick={() => {
+              void (async () => {
+                const pendingClaims = (claims.data ?? []).filter((claim) => claim.isIndependent && claim.elements.length === 0);
+                setPending("decompose-all");
+                setError(null);
+                try {
+                  for (let index = 0; index < pendingClaims.length; index += 1) {
+                    const claim = pendingClaims[index];
+                    setNotice(`Decomposing claim ${claim.claimNumber} (${index + 1} of ${pendingClaims.length})…`);
+                    const job = await api<{ jobId: string }>(`/claims/${claim.id}/decompose`, { method: "POST" });
+                    await waitForJob(job.jobId, 240_000);
+                  }
+                  setNotice("Independent claims were split into chart rows.");
+                  refreshClaims();
+                } catch (reason) {
+                  setNotice(null);
+                  setError(errorMessage(reason, "Claim decomposition failed"));
+                  refreshClaims();
+                } finally {
+                  setPending(null);
+                }
+              })();
+            }}
+          >
+            {pending === "decompose-all" ? "Decomposing…" : "Decompose independent"}
+          </button>
+          <button
+            className="rounded border border-line px-2 py-1 text-xs"
             disabled={!priorReady || pending === "search-all" || (claims.data ?? []).every((claim) => claim.elements.length === 0)}
             onClick={() => {
               void (async () => {
@@ -118,9 +150,9 @@ export default function ClaimsPage({ params }: { params: Promise<{ projectId: st
                   for (let index = 0; index < elements.length; index += 1) {
                     setNotice(`Searching prior art ${index + 1} of ${elements.length}…`);
                     const job = await api<{ jobId: string }>(`/claim-elements/${elements[index].id}/search`, { method: "POST" });
-                    await waitForJob(job.jobId);
+                    await waitForJob(job.jobId, 300_000);
                   }
-                  setNotice("Prior-art search finished.");
+                  setNotice("Prior-art search finished. Open Claim chart to review the mapping.");
                   refreshClaims();
                   if (elementId) void client.invalidateQueries({ queryKey: ["evidence", elementId] });
                 } catch (reason) {
@@ -181,7 +213,10 @@ export default function ClaimsPage({ params }: { params: Promise<{ projectId: st
                       setActive(null);
                     }}
                   >
-                    {element.elementKey}. {element.text}
+                    <span className={elementId === element.id ? "text-white/80" : "text-pine"}>
+                      {clauseLabel(claim.claimNumber, index, element.text, claim.elements[0]?.text ?? element.text)}
+                    </span>
+                    <span className="mt-0.5 block">{element.text}</span>
                   </button>
                   <div className="mt-1 flex gap-2 px-1 text-[11px] text-stone-500">
                     <button
@@ -433,6 +468,17 @@ function ElementEditor({
       </div>
     </form>
   );
+}
+
+function clauseLabel(claimNumber: number, index: number, elementText: string, firstElementText: string): string {
+  const trimmed = firstElementText.trim();
+  const preamble =
+    !/^(receiving|camping|determining|transmitting|performing|sending|selecting|monitoring|applying|filling|providing|controlling)\b/i.test(
+      trimmed,
+    ) &&
+    /comprising|processing means|storage unit|program code|a method|an apparatus|a system|a device/i.test(trimmed);
+  if (preamble && index === 0) return `Claim ${claimNumber}`;
+  return `Clause ${preamble ? index : index + 1}`;
 }
 
 function OverrideForm({ item, onSaved }: { item: EvidenceItem; onSaved: () => void }) {

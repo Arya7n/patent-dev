@@ -12,7 +12,7 @@ import {
   WidthType,
 } from "docx";
 import PDFDocument from "pdfkit";
-import type { ClaimChart, PhraseAlignment } from "@patent/shared";
+import { chartRowLabel, isPreambleElement, type ClaimChart, type PhraseAlignment } from "@patent/shared";
 
 const INK = "333333";
 const HEADER_BLUE = "0070C0";
@@ -84,13 +84,6 @@ function paragraph(text: string, options?: { bold?: boolean; color?: string; siz
   });
 }
 
-function isPreamble(text: string, index: number): boolean {
-  if (index !== 0) return false;
-  const trimmed = text.trim();
-  if (/^(receiving|camping|determining|transmitting|performing|sending|selecting|monitoring|applying)\b/i.test(trimmed)) return false;
-  return /comprising|processing means|storage unit|program code/i.test(trimmed);
-}
-
 function bestEvidence(chart: ClaimChart, elementId: string, documentId: string) {
   const cell = chart.cells.find((item) => item.elementId === elementId && item.documentId === documentId);
   const ranked = [...(cell?.evidence ?? [])].sort((a, b) => b.confidence - a.confidence);
@@ -102,7 +95,7 @@ export async function renderDocx(chart: ClaimChart): Promise<Buffer> {
   const rows: TableRow[] = [
     new TableRow({
       children: [
-        cell([paragraph("Patent number", { bold: true })]),
+        cell([paragraph("Patent Number:", { bold: true })]),
         cell([paragraph(chart.targetTitle || chart.projectName, { bold: true, color: HEADER_BLUE, size: 22 })]),
       ],
     }),
@@ -133,9 +126,10 @@ export async function renderDocx(chart: ClaimChart): Promise<Buffer> {
   for (const claimNumber of claimNumbers) {
     const elements = chart.elements.filter((element) => element.claimNumber === claimNumber);
     const claimText = elements[0]?.claimText || "";
-    const preamble = isPreamble(elements[0]?.text ?? "", 0);
+    const firstText = elements[0]?.text ?? "";
+    const preamble = isPreambleElement(firstText, 0);
     elements.forEach((element, index) => {
-      const label = preamble && index === 0 ? `Claim ${claimNumber}` : `Clause ${preamble ? index : index + 1}`;
+      const label = chartRowLabel(claimNumber, index, element.text, firstText);
       const left = [
         paragraph(label, { bold: true, color: HEADER_BLUE }),
         new Paragraph({
@@ -161,6 +155,7 @@ export async function renderDocx(chart: ClaimChart): Promise<Buffer> {
           }),
         );
         blocks.push(paragraph(`Page ${evidence.pageNumber}`, { size: 18, color: "666666" }));
+        blocks.push(paragraph("Analyst comment", { bold: true, color: HEADER_BLUE, size: 18 }));
         blocks.push(paragraph(evidence.explanation));
         if (evidence.analystNote) blocks.push(paragraph(`Analyst note: ${evidence.analystNote}`));
         return blocks;
@@ -228,9 +223,9 @@ export function renderPdf(chart: ClaimChart): Promise<Buffer> {
     const claimNumbers = [...new Set(chart.elements.map((element) => element.claimNumber))];
     for (const claimNumber of claimNumbers) {
       const elements = chart.elements.filter((element) => element.claimNumber === claimNumber);
-      const preamble = isPreamble(elements[0]?.text ?? "", 0);
+      const firstText = elements[0]?.text ?? "";
       elements.forEach((element, index) => {
-        const label = preamble && index === 0 ? `Claim ${claimNumber}` : `Clause ${preamble ? index : index + 1}`;
+        const label = chartRowLabel(claimNumber, index, element.text, firstText);
         doc.fillColor("#0070C0").fontSize(13).text(label);
         writeColored(doc, element.text, chart.priorArt.flatMap((document) => bestEvidence(chart, element.id, document.id)?.alignments ?? []), "claimPhrase");
         for (const document of chart.priorArt) {
@@ -242,6 +237,7 @@ export function renderPdf(chart: ClaimChart): Promise<Buffer> {
           }
           writeColored(doc, evidence.text, evidence.alignments, "sourcePhrase");
           doc.fillColor("#666666").fontSize(9).text(`Page ${evidence.pageNumber}`);
+          doc.fillColor("#0070C0").fontSize(9).text("Analyst comment");
           doc.fillColor("#333333").fontSize(10).text(evidence.explanation);
           if (evidence.analystNote) doc.fontSize(10).text(`Analyst note: ${evidence.analystNote}`);
         }

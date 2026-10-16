@@ -33,21 +33,53 @@ export default function ClaimChartPage({ params }: { params: Promise<{ projectId
         </Link>
       </div>
       {chart.isError ? <p className="mt-4 text-sm text-rose-800">{errorMessage(chart.error, "The claim chart could not be loaded.")}</p> : null}
+      {data ? (
+        <ol className="mt-6 grid gap-2 rounded-2xl border border-line bg-[#fffcf7] p-4 text-sm text-stone-700 sm:grid-cols-4">
+          <li className={data.targetTitle ? "text-pine" : ""}>
+            <span className="font-medium">1. Target patent</span>
+            <p className="mt-1 text-xs text-stone-500">{data.targetTitle ? data.targetTitle : "Process the target PDF on Documents."}</p>
+          </li>
+          <li className={data.elements.length > 0 ? "text-pine" : ""}>
+            <span className="font-medium">2. Claim rows</span>
+            <p className="mt-1 text-xs text-stone-500">
+              {data.elements.length > 0
+                ? `${data.elements.length} clause row${data.elements.length === 1 ? "" : "s"} ready.`
+                : "Decompose a claim on Claims."}
+            </p>
+          </li>
+          <li className={data.priorArt.length > 0 ? "text-pine" : ""}>
+            <span className="font-medium">3. References</span>
+            <p className="mt-1 text-xs text-stone-500">
+              {data.priorArt.length > 0
+                ? `${data.priorArt.length} reference${data.priorArt.length === 1 ? "" : "s"} processed.`
+                : "Upload and process prior-art or standards PDFs."}
+            </p>
+          </li>
+          <li className={data.cells.length > 0 ? "text-pine" : ""}>
+            <span className="font-medium">4. Mapping</span>
+            <p className="mt-1 text-xs text-stone-500">
+              {data.cells.length > 0
+                ? "Search finished. Review highlights, then export."
+                : "Run Search all elements on Claims."}
+            </p>
+          </li>
+        </ol>
+      ) : null}
       {data && data.elements.length === 0 ? (
-        <p className="mt-6 max-w-3xl text-sm text-stone-500">
-          Decompose a claim on the Claims page so each clause becomes a row. Then process a reference PDF. The Mapping column quotes that reference, highlights the matching phrases, and ends with whether the reference reads on the clause.
+        <p className="mt-4 max-w-3xl text-sm text-stone-500">
+          This page becomes a professional Claims | Mapping chart after those steps. The export mirrors that layout, with color-matched phrases and an analyst ending line on each row.
         </p>
       ) : null}
       {data ? (
         <section className="mt-6 overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
           <header className="grid gap-4 border-b border-line p-4 md:grid-cols-2">
             <div>
-              <p className="text-xs uppercase tracking-wide text-stone-500">Patent number</p>
+              <p className="text-xs uppercase tracking-wide text-stone-500">Patent Number</p>
               <p className="mt-1 font-medium text-[#0070C0]">{data.targetTitle || data.projectName}</p>
               <p className="mt-1 text-sm text-stone-500">{data.projectName}</p>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-stone-500">References</p>
+              <p className="text-xs uppercase tracking-wide text-stone-500">Standards / references</p>
               {data.priorArt.length === 0 ? <p className="mt-1 text-sm text-stone-500">Process a prior-art or reference PDF to fill the mapping column.</p> : null}
               <ol className="mt-1 list-decimal pl-5 text-sm">
                 {data.priorArt.map((document) => (
@@ -67,15 +99,13 @@ export default function ClaimChartPage({ params }: { params: Promise<{ projectId
               <tbody>
                 {claimNumbers.map((claimNumber) => {
                   const elements = (data.elements ?? []).filter((element) => element.claimNumber === claimNumber);
-                  const preamble = isPreamble(elements[0]?.text ?? "");
+                  const firstText = elements[0]?.text ?? "";
                   return (
                     <Fragment key={claimNumber}>
                       {elements.map((element, index) => (
                         <tr key={element.id}>
                           <td className="border border-line p-3 align-top">
-                            <p className="font-medium text-[#0070C0]">
-                              {preamble && index === 0 ? `Claim ${claimNumber}` : `Clause ${preamble ? index : index + 1}`}
-                            </p>
+                            <p className="font-medium text-[#0070C0]">{rowLabel(claimNumber, index, element.text, firstText)}</p>
                             <p className="mt-2 leading-6">
                               <HighlightedText
                                 text={element.text}
@@ -104,7 +134,8 @@ export default function ClaimChartPage({ params }: { params: Promise<{ projectId
                                           <HighlightedText text={evidence.text} alignments={evidence.alignments ?? []} field="sourcePhrase" />
                                         </p>
                                         <p className="mt-1 text-xs text-stone-500">Page {evidence.pageNumber}</p>
-                                        <p className="mt-2 text-stone-700">{evidence.explanation}</p>
+                                        <p className="mt-3 text-xs font-medium uppercase tracking-wide text-[#0070C0]">Analyst comment</p>
+                                        <p className="mt-1 text-stone-700">{evidence.explanation}</p>
                                         {evidence.analystNote ? <p className="mt-2 text-xs">Analyst note: {evidence.analystNote}</p> : null}
                                       </>
                                     ) : (
@@ -131,8 +162,16 @@ export default function ClaimChartPage({ params }: { params: Promise<{ projectId
 
 function isPreamble(text: string): boolean {
   const trimmed = text.trim();
-  if (/^(receiving|camping|determining|transmitting|performing|sending|selecting|monitoring|applying)\b/i.test(trimmed)) return false;
-  return /comprising|processing means|storage unit|program code/i.test(trimmed);
+  if (/^(receiving|camping|determining|transmitting|performing|sending|selecting|monitoring|applying|filling|providing|controlling)\b/i.test(trimmed)) {
+    return false;
+  }
+  return /comprising|processing means|storage unit|program code|a method|an apparatus|a system|a device/i.test(trimmed);
+}
+
+function rowLabel(claimNumber: number, index: number, elementText: string, firstElementText: string): string {
+  const preamble = isPreamble(firstElementText);
+  if (preamble && index === 0) return `Claim ${claimNumber}`;
+  return `Clause ${preamble ? index : index + 1}`;
 }
 
 function bestEvidence(chart: ClaimChart, elementId: string, documentId: string): Evidence | null {
