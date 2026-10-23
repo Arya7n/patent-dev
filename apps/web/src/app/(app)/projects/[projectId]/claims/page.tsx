@@ -7,7 +7,7 @@ import { HighlightedText } from "@/components/highlighted-text";
 import { PdfViewer } from "@/components/pdf-viewer";
 import { api } from "@/lib/api";
 import { errorMessage, waitForJob } from "@/lib/jobs";
-import { isSearchableReference } from "@/lib/labels";
+import { clauseLabel, isSearchableReference } from "@/lib/labels";
 import { STATUS_CLASS, type Claim, type ClaimElement, type EvidenceItem, type Job, type PatentDocument } from "@/lib/types";
 
 const ELEMENT_TYPES = ["component", "function", "relationship", "limitation", "other"] as const;
@@ -214,7 +214,7 @@ export default function ClaimsPage({ params }: { params: Promise<{ projectId: st
                     }}
                   >
                     <span className={elementId === element.id ? "text-white/80" : "text-pine"}>
-                      {clauseLabel(claim.claimNumber, index, element.text, claim.elements[0]?.text ?? element.text)}
+                      {clauseLabel(claim.claimNumber, index, claim.elements[0]?.text ?? element.text)}
                     </span>
                     <span className="mt-0.5 block">{element.text}</span>
                   </button>
@@ -468,17 +468,6 @@ function ElementEditor({
       </div>
     </form>
   );
-}
-
-function clauseLabel(claimNumber: number, index: number, elementText: string, firstElementText: string): string {
-  const trimmed = firstElementText.trim();
-  const preamble =
-    !/^(receiving|camping|determining|transmitting|performing|sending|selecting|monitoring|applying|filling|providing|controlling)\b/i.test(
-      trimmed,
-    ) &&
-    /comprising|processing means|storage unit|program code|a method|an apparatus|a system|a device/i.test(trimmed);
-  if (preamble && index === 0) return `Claim ${claimNumber}`;
-  return `Clause ${preamble ? index : index + 1}`;
 }
 
 function OverrideForm({ item, onSaved }: { item: EvidenceItem; onSaved: () => void }) {

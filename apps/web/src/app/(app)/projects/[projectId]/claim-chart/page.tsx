@@ -7,6 +7,7 @@ import { use } from "react";
 import { HighlightedText } from "@/components/highlighted-text";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/lib/jobs";
+import { clauseLabel } from "@/lib/labels";
 import { STATUS_CLASS, type ClaimChart } from "@/lib/types";
 
 type Evidence = ClaimChart["cells"][number]["evidence"][number];
@@ -105,7 +106,7 @@ export default function ClaimChartPage({ params }: { params: Promise<{ projectId
                       {elements.map((element, index) => (
                         <tr key={element.id}>
                           <td className="border border-line p-3 align-top">
-                            <p className="font-medium text-[#0070C0]">{rowLabel(claimNumber, index, element.text, firstText)}</p>
+                            <p className="font-medium text-[#0070C0]">{clauseLabel(claimNumber, index, firstText)}</p>
                             <p className="mt-2 leading-6">
                               <HighlightedText
                                 text={element.text}
@@ -158,20 +159,6 @@ export default function ClaimChartPage({ params }: { params: Promise<{ projectId
       ) : null}
     </main>
   );
-}
-
-function isPreamble(text: string): boolean {
-  const trimmed = text.trim();
-  if (/^(receiving|camping|determining|transmitting|performing|sending|selecting|monitoring|applying|filling|providing|controlling)\b/i.test(trimmed)) {
-    return false;
-  }
-  return /comprising|processing means|storage unit|program code|a method|an apparatus|a system|a device/i.test(trimmed);
-}
-
-function rowLabel(claimNumber: number, index: number, elementText: string, firstElementText: string): string {
-  const preamble = isPreamble(firstElementText);
-  if (preamble && index === 0) return `Claim ${claimNumber}`;
-  return `Clause ${preamble ? index : index + 1}`;
 }
 
 function bestEvidence(chart: ClaimChart, elementId: string, documentId: string): Evidence | null {
