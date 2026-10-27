@@ -29,7 +29,11 @@ export default function ClaimChartPage({ params }: { params: Promise<{ projectId
           <h1 className="mt-2 font-serif text-4xl">Claim chart</h1>
           <p className="mt-2 max-w-3xl text-sm text-stone-600">{data?.disclaimer}</p>
         </div>
-        <Link href={`/projects/${projectId}/reports`} className="rounded bg-pine px-4 py-2 text-sm text-white">
+        <Link
+          href={`/projects/${projectId}/reports`}
+          aria-disabled={!data || data.elements.length === 0}
+          className={`rounded bg-pine px-4 py-2 text-sm text-white ${!data || data.elements.length === 0 ? "pointer-events-none opacity-50" : ""}`}
+        >
           Export report
         </Link>
       </div>
