@@ -33,4 +33,9 @@ describe("buildClaimChart", () => {
     expect(patentLabel("CC_HTC_US9320057B2_5G.pdf", null)).toBe("US9320057B2");
     expect(patentLabel("notes.pdf", "Bottle filling method")).toBe("Bottle filling method");
   });
+
+  it("reads EP and WO publication numbers with kind codes", () => {
+    expect(patentLabel("EP1234567A1.pdf", null)).toBe("EP1234567A1");
+    expect(patentLabel("prior_WO2019123456_draft.pdf", null)).toBe("WO2019123456");
+  });
 });
