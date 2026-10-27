@@ -44,6 +44,10 @@ worker.on("failed", (job, error) => {
   console.error(JSON.stringify({ level: "error", bullJobId: job?.id, message: error.message }));
 });
 
+worker.on("error", (error) => {
+  console.error(JSON.stringify({ level: "error", status: "worker_error", message: error.message }));
+});
+
 async function shutdown() {
   await worker.close();
   await connection.quit();
