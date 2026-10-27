@@ -225,4 +225,6 @@ The site and the API need to share a parent domain so the session cookie is sent
 
 **The chart has clauses but no colored quotes.** Run **Search all elements** again, then generate a new report. Evidence saved before phrase alignments existed has an empty mapping.
 
+**A document fails with "quota was reached" or a 429.** Gemini rate-limited the request. The worker already retries with a pause, so wait a minute and click **Retry** on the Documents page. Free-tier keys hit this most often on long PDFs.
+
 **Model output looks generic.** Settings should show Gemini as the active provider. An empty `GEMINI_API_KEY` selects the local fallback.
