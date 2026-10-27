@@ -40,7 +40,7 @@ export function cacheKey(model: string, operation: string, prompt: string): stri
   return createHash("sha256").update(`${model}\n${operation}\n${prompt}`).digest("hex");
 }
 
-const RETRYABLE_STATUS = new Set([429, 500, 503]);
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 
 export function retryDelayMs(retryAfter: string | null, attempt: number): number {
   const seconds = retryAfter ? Number(retryAfter) : Number.NaN;
