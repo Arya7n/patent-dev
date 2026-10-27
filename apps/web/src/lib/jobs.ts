@@ -26,5 +26,7 @@ export async function waitForJob(
 }
 
 export function errorMessage(reason: unknown, fallback: string) {
-  return reason instanceof Error && reason.message ? reason.message : fallback;
+  if (reason instanceof Error && reason.message) return reason.message;
+  if (typeof reason === "string" && reason.trim()) return reason.trim();
+  return fallback;
 }
