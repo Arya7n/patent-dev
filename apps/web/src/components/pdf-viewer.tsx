@@ -34,6 +34,7 @@ export function PdfViewer({
     setFile(null);
     setError(null);
     setPage(1);
+    setPages(0);
     setZoom(1);
     apiBlob(`/documents/${documentId}/file`)
       .then((blob) => {
