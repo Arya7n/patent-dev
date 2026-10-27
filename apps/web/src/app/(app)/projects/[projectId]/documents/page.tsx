@@ -79,7 +79,7 @@ export default function DocumentsPage({ params }: { params: Promise<{ projectId:
                 {documentRoleLabel(document.role)} · {documentStatusLabel(document.status)}
                 {document.pageCount ? ` · ${document.pageCount} pages` : ""}
               </p>
-              {document.error ? <p className="mt-1 text-amber-800">{document.error}</p> : null}
+              {document.error && document.status !== "ocr_required" ? <p className="mt-1 text-amber-800">{document.error}</p> : null}
               {document.status === "ocr_required" ? (
                 <p className="mt-1 text-amber-800">This PDF has too little text. Install Tesseract and Ghostscript, then process it again.</p>
               ) : null}
