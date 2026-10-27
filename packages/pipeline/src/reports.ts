@@ -61,9 +61,11 @@ function docxRuns(text: string, alignments: PhraseAlignment[], field: "claimPhra
   );
 }
 
-function cell(children: Paragraph[], fill?: string): TableCell {
+const COLUMN_WIDTHS = [4200, 5160] as const;
+
+function cell(children: Paragraph[], column: 0 | 1, fill?: string): TableCell {
   return new TableCell({
-    width: { size: fill ? 4680 : 4680, type: WidthType.DXA },
+    width: { size: COLUMN_WIDTHS[column], type: WidthType.DXA },
     margins: { top: 80, bottom: 80, left: 80, right: 80 },
     shading: fill ? { type: ShadingType.CLEAR, fill } : undefined,
     children,
@@ -95,30 +97,31 @@ export async function renderDocx(chart: ClaimChart): Promise<Buffer> {
   const rows: TableRow[] = [
     new TableRow({
       children: [
-        cell([paragraph("Patent Number:", { bold: true })]),
-        cell([paragraph(chart.targetTitle || chart.projectName, { bold: true, color: HEADER_BLUE, size: 22 })]),
+        cell([paragraph("Patent Number:", { bold: true })], 0),
+        cell([paragraph(chart.targetTitle || chart.projectName, { bold: true, color: HEADER_BLUE, size: 22 })], 1),
       ],
     }),
     new TableRow({
       children: [
-        cell([paragraph("Matter", { bold: true })]),
-        cell([paragraph(chart.projectName)]),
+        cell([paragraph("Matter", { bold: true })], 0),
+        cell([paragraph(chart.projectName)], 1),
       ],
     }),
     new TableRow({
       children: [
-        cell([paragraph("Standards / references", { bold: true })]),
+        cell([paragraph("Standards / references", { bold: true })], 0),
         cell(
           chart.priorArt.length > 0
             ? chart.priorArt.map((document, index) => paragraph(`${index + 1}. ${document.title}`))
             : [paragraph("No reference documents were uploaded.")],
+          1,
         ),
       ],
     }),
     new TableRow({
       children: [
-        cell([paragraph("Claims", { bold: true, color: "FFFFFF" })], "1F4B3A"),
-        cell([paragraph("Mapping", { bold: true, color: "FFFFFF" })], "1F4B3A"),
+        cell([paragraph("Claims", { bold: true, color: "FFFFFF" })], 0, "1F4B3A"),
+        cell([paragraph("Mapping", { bold: true, color: "FFFFFF" })], 1, "1F4B3A"),
       ],
     }),
   ];
@@ -163,8 +166,8 @@ export async function renderDocx(chart: ClaimChart): Promise<Buffer> {
       rows.push(
         new TableRow({
           children: [
-            cell(left),
-            cell(mappings.length > 0 ? mappings : [paragraph("No reference documents were available.")]),
+            cell(left, 0),
+            cell(mappings.length > 0 ? mappings : [paragraph("No reference documents were available.")], 1),
           ],
         }),
       );
@@ -189,7 +192,7 @@ export async function renderDocx(chart: ClaimChart): Promise<Buffer> {
           paragraph(chart.disclaimer, { size: 18, color: "666666" }),
           new Table({
             width: { size: 9360, type: WidthType.DXA },
-            columnWidths: [4200, 5160],
+            columnWidths: [...COLUMN_WIDTHS],
             rows,
           }),
         ],
