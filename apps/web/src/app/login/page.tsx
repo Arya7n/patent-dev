@@ -36,11 +36,11 @@ export default function LoginPage() {
       >
         <label className="block text-sm">
           Email
-          <input name="email" type="email" required className="mt-1 w-full px-3 py-2.5" />
+          <input name="email" type="email" autoComplete="email" required className="mt-1 w-full px-3 py-2.5" />
         </label>
         <label className="block text-sm">
           Password
-          <input name="password" type="password" required className="mt-1 w-full px-3 py-2.5" />
+          <input name="password" type="password" autoComplete="current-password" required className="mt-1 w-full px-3 py-2.5" />
         </label>
         {error ? <p className="text-sm text-rose-800">{error}</p> : null}
         <button disabled={pending} className="mt-2 bg-pine px-4 py-2.5 text-sm text-white">
