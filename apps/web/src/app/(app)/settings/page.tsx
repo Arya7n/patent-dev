@@ -38,9 +38,9 @@ export default function SettingsPage() {
         <Row label="Chat model" value={data?.chatModel} />
         <Row label="Embedding model" value={data?.embeddingModel} />
         <Row label="Storage" value={data?.storageProvider} />
-        <Row label="Model requests" value={usage.data ? String(usage.data.requests) : undefined} />
-        <Row label="Input tokens" value={usage.data ? String(usage.data.inputTokens) : undefined} />
-        <Row label="Output tokens" value={usage.data ? String(usage.data.outputTokens) : undefined} />
+        <Row label="Model requests" value={usage.data ? usage.data.requests.toLocaleString() : undefined} />
+        <Row label="Input tokens" value={usage.data ? usage.data.inputTokens.toLocaleString() : undefined} />
+        <Row label="Output tokens" value={usage.data ? usage.data.outputTokens.toLocaleString() : undefined} />
         <Row label="Estimated cost" value={usage.data ? `$${Number(usage.data.estimatedCostUsd).toFixed(4)}` : undefined} />
       </dl>
       {data && !data.aiConfigured ? (
