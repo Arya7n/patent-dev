@@ -22,4 +22,8 @@ const result = spawnSync("docker", ["compose", ...process.argv.slice(2)], {
   shell: process.platform === "win32",
 });
 
+if (result.error) {
+  console.error(`Could not run docker: ${result.error.message}. Start Docker Desktop and try again.`);
+}
+
 process.exit(result.status ?? 1);
