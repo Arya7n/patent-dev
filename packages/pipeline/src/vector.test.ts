@@ -11,6 +11,7 @@ describe("embeddings", () => {
     expect(norm).toBeCloseTo(1, 5);
     expect(toVectorLiteral([0.25, -0.5], 2)).toBe("[0.25,-0.5]");
     expect(() => toVectorLiteral([Number.NaN], 1)).toThrow(/Invalid embedding/);
+    expect(() => toVectorLiteral([0.1], 768)).toThrow(/expected 768, got 1/);
   });
 
   it("estimates chat and embedding cost from token counts", () => {
