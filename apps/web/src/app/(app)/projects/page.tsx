@@ -35,8 +35,8 @@ export default function ProjectsPage() {
           if (name) create.mutate({ name, description });
         }}
       >
-        <input name="name" required placeholder="Matter name" className="rounded border border-line bg-panel px-3 py-2" />
-        <input name="description" placeholder="Short description (optional)" className="rounded border border-line bg-panel px-3 py-2" />
+        <input name="name" required maxLength={200} placeholder="Matter name" className="rounded border border-line bg-panel px-3 py-2" />
+        <input name="description" maxLength={1000} placeholder="Short description (optional)" className="rounded border border-line bg-panel px-3 py-2" />
         <button disabled={create.isPending} className="justify-self-start rounded bg-pine px-4 py-2 text-sm text-white">
           {create.isPending ? "Creating…" : "Create project"}
         </button>
