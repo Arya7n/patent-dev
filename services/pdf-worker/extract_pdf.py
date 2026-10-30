@@ -7,8 +7,16 @@ import fitz
 
 
 def main() -> None:
+    if len(sys.argv) != 3:
+        sys.exit("usage: extract_pdf.py <input.pdf> <output.json>")
     source, destination = sys.argv[1], sys.argv[2]
-    document = fitz.open(source)
+    with fitz.open(source) as document:
+        payload = extract(document)
+    with open(destination, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle)
+
+
+def extract(document: "fitz.Document") -> dict:
     pages = []
     for index, page in enumerate(document, start=1):
         items = []
@@ -43,13 +51,11 @@ def main() -> None:
             }
         )
     metadata = document.metadata or {}
-    payload = {
+    return {
         "pageCount": document.page_count,
         "metadata": {"title": metadata.get("title") or "", "author": metadata.get("author") or ""},
         "pages": pages,
     }
-    with open(destination, "w", encoding="utf-8") as handle:
-        json.dump(payload, handle)
 
 
 if __name__ == "__main__":
