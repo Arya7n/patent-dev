@@ -92,7 +92,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <button
               className="text-xs text-stone-400 hover:text-white"
               onClick={() => {
-                void api("/auth/logout", { method: "POST" }).then(() => router.push("/login"));
+                void api("/auth/logout", { method: "POST" })
+                  .catch(() => undefined)
+                  .finally(() => router.push("/login"));
               }}
             >
               Sign out
