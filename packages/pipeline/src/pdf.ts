@@ -68,11 +68,20 @@ async function runOcr(pythonBin: string, input: string, output: string): Promise
   return code === 0 && existsSync(output);
 }
 
+const PROCESS_TIMEOUT_MS = 10 * 60 * 1000;
+
 function run(command: string, args: string[]): Promise<number> {
   return new Promise((resolve) => {
     const child = spawn(command, args, { stdio: "ignore" });
-    child.on("error", () => resolve(1));
-    child.on("close", (code) => resolve(code ?? 1));
+    const timer = setTimeout(() => child.kill(), PROCESS_TIMEOUT_MS);
+    child.on("error", () => {
+      clearTimeout(timer);
+      resolve(1);
+    });
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      resolve(code ?? 1);
+    });
   });
 }
 
