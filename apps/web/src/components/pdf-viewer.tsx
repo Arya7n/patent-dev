@@ -70,25 +70,25 @@ export function PdfViewer({
     <div className="flex h-full min-h-0 flex-col bg-[#e7e1d6]">
       <div className="flex flex-wrap items-center gap-2 border-b border-line bg-[#fffcf7] px-3 py-2 text-sm">
         <div className="flex items-center gap-1">
-          <button className="rounded border border-line bg-white px-2 py-1" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1}>
+          <button type="button" aria-label="Previous page" className="rounded border border-line bg-white px-2 py-1" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1}>
             Previous
           </button>
-          <span className="min-w-[5.5rem] text-center text-xs text-stone-600">
+          <span className="min-w-[5.5rem] text-center text-xs text-stone-600" aria-live="polite">
             {pages > 0 ? `Page ${page} / ${pages}` : "Page"}
           </span>
-          <button className="rounded border border-line bg-white px-2 py-1" onClick={() => setPage((current) => Math.min(pages, current + 1))} disabled={page >= pages}>
+          <button type="button" aria-label="Next page" className="rounded border border-line bg-white px-2 py-1" onClick={() => setPage((current) => Math.min(pages, current + 1))} disabled={page >= pages}>
             Next
           </button>
         </div>
         <div className="flex items-center gap-1">
-          <button className="rounded border border-line bg-white px-2 py-1 text-xs" onClick={() => setZoom(1)}>
+          <button type="button" aria-label="Fit page to width" className="rounded border border-line bg-white px-2 py-1 text-xs" onClick={() => setZoom(1)}>
             Fit width
           </button>
-          <button className="rounded border border-line bg-white px-2 py-1" onClick={() => setZoom((current) => Math.max(0.6, Number((current - 0.1).toFixed(2))))}>
+          <button type="button" aria-label="Zoom out" className="rounded border border-line bg-white px-2 py-1" onClick={() => setZoom((current) => Math.max(0.6, Number((current - 0.1).toFixed(2))))}>
             −
           </button>
-          <span className="w-12 text-center text-xs text-stone-600">{Math.round(zoom * 100)}%</span>
-          <button className="rounded border border-line bg-white px-2 py-1" onClick={() => setZoom((current) => Math.min(2.5, Number((current + 0.1).toFixed(2))))}>
+          <span className="w-12 text-center text-xs text-stone-600" aria-live="polite">{Math.round(zoom * 100)}%</span>
+          <button type="button" aria-label="Zoom in" className="rounded border border-line bg-white px-2 py-1" onClick={() => setZoom((current) => Math.min(2.5, Number((current + 0.1).toFixed(2))))}>
             +
           </button>
         </div>
