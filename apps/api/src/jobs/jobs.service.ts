@@ -41,7 +41,13 @@ export class JobsService implements OnModuleDestroy {
     const bullJob = await this.queue.add(
       input.type,
       { jobId: job.id },
-      { attempts: 3, backoff: { type: "exponential", delay: 3000 }, removeOnComplete: 200, removeOnFail: 200 },
+      {
+        jobId: job.id,
+        attempts: 3,
+        backoff: { type: "exponential", delay: 5000 },
+        removeOnComplete: 200,
+        removeOnFail: 200,
+      },
     );
     await this.context.db
       .update(processingJobs)
