@@ -10,6 +10,7 @@ const config: Config = {
         panel: "#fffcf7",
         line: "#e4ddd2",
         pine: "#1f4b3a",
+        brass: "#b0894a",
       },
       fontFamily: {
         sans: ["var(--font-sans)", "ui-sans-serif", "system-ui"],
