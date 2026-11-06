@@ -85,8 +85,11 @@ export function canManageOrg(role: MemberRole): boolean {
 export function slugify(name: string): string {
   const base = name
     .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
+    .replace(/-{2,}/g, "-")
     .slice(0, 40);
   return base || "org";
 }
