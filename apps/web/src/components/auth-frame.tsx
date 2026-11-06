@@ -38,7 +38,11 @@ export function AuthFrame({
           <div className="mt-8">{children}</div>
           <p className="mt-6 text-sm text-stone-600">
             {alternate.prompt}{" "}
-            <Link href={alternate.href} className="font-medium text-pine underline decoration-pine/30 underline-offset-4">
+            <Link
+              href={alternate.href}
+              className="font-medium text-pine underline decoration-pine/30 underline-offset-4"
+              prefetch={false}
+            >
               {alternate.label}
             </Link>
           </p>
