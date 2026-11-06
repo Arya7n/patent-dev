@@ -3,20 +3,20 @@
 import json
 import sys
 
-import fitz
+import pymupdf
 
 
 def main() -> None:
     if len(sys.argv) != 3:
         sys.exit("usage: extract_pdf.py <input.pdf> <output.json>")
     source, destination = sys.argv[1], sys.argv[2]
-    with fitz.open(source) as document:
+    with pymupdf.open(source) as document:
         payload = extract(document)
     with open(destination, "w", encoding="utf-8") as handle:
         json.dump(payload, handle)
 
 
-def extract(document: "fitz.Document") -> dict:
+def extract(document: "pymupdf.Document") -> dict:
     pages = []
     for index, page in enumerate(document, start=1):
         items = []
