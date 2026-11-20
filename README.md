@@ -97,8 +97,9 @@ Root `.env` is loaded by the API and the worker. `apps/web/.env` is loaded by Ne
 | --- | --- | --- |
 | `NEXT_PUBLIC_API_URL` | Web | API origin the browser calls. Locally `http://localhost:3001`. Changing it requires a web restart. |
 | `API_PORT` | API | Listen port. Default 3001. |
-| `DATABASE_URL` | API, worker | Postgres connection string. |
-| `DIRECT_DATABASE_URL` | Migrations | Non-pooled Postgres URL. Same as `DATABASE_URL` on this Docker setup. |
+| `DATABASE_URL` | API, worker | Pooled Postgres connection string. On Neon this host contains `-pooler`. |
+| `DATABASE_URL_UNPOOLED` | Migrations | Direct Neon connection string. `pnpm db:migrate` prefers this over the pooled URL. |
+| `DIRECT_DATABASE_URL` | Migrations | Same direct URL. Kept for local Docker, where it matches `DATABASE_URL`. |
 | `REDIS_URL` | API, worker | `redis://localhost:6380` locally. |
 | `AUTH_SECRET` | API | Signs the session cookie. Required. |
 | `AUTH_COOKIE_NAME` | API | Cookie name. Default `patent_session`. |
