@@ -2,7 +2,7 @@ import { z } from "zod";
 
 export const runtimeEnvSchema = z.object({
   DATABASE_URL: z.string().min(1),
-  REDIS_URL: z.string().min(1).default("redis://localhost:6379"),
+  REDIS_URL: z.string().min(1).default("redis://localhost:6380"),
   AUTH_SECRET: z.string().min(16),
   AUTH_COOKIE_NAME: z.string().default("patent_session"),
   AUTH_CORS_ORIGINS: z.string().default("http://localhost:3000"),
