@@ -39,7 +39,13 @@ export class AuthController {
   async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const token = request.cookies?.[this.context.env.AUTH_COOKIE_NAME];
     await this.auth.logout(typeof token === "string" ? token : undefined);
-    response.clearCookie(this.context.env.AUTH_COOKIE_NAME, { path: "/" });
+    const options = this.auth.cookieOptions();
+    response.clearCookie(this.context.env.AUTH_COOKIE_NAME, {
+      httpOnly: options.httpOnly,
+      sameSite: options.sameSite,
+      secure: options.secure,
+      path: options.path,
+    });
     return { ok: true };
   }
 
