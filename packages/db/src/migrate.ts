@@ -1,11 +1,20 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 import postgres from "postgres";
+import { postgresOptions } from "./client";
 
-async function main() {
+function migrationUrl(): string {
+  // Neon migrations need the direct endpoint. The pooled URL is for the API and worker.
+  const direct = process.env.DATABASE_URL_UNPOOLED || process.env.DIRECT_DATABASE_URL;
+  if (direct && !direct.includes("localhost") && !direct.includes("127.0.0.1")) return direct;
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) throw new Error("DATABASE_URL is required");
-  const sql = postgres(databaseUrl, { max: 1 });
+  return databaseUrl;
+}
+
+async function main() {
+  const databaseUrl = migrationUrl();
+  const sql = postgres(databaseUrl, postgresOptions(databaseUrl, 1));
   await sql`create table if not exists schema_migrations (
     id text primary key,
     applied_at timestamptz not null default now()
