@@ -8,6 +8,8 @@ describe("local storage", () => {
   it("rejects path traversal and round-trips a file", async () => {
     const root = await mkdtemp(path.join(tmpdir(), "patent-storage-"));
     expect(() => resolveInside(root, "../outside.txt")).toThrow(/Invalid storage key/);
+    expect(() => resolveInside(root, "")).toThrow(/Invalid storage key/);
+    expect(() => resolveInside(root, "org/../../outside.txt")).toThrow(/Invalid storage key/);
     const storage = createStorage({ provider: "local", localPath: root });
     await storage.put("org/project/file.pdf", Buffer.from("pdf"), "application/pdf");
     const saved = await readFile(path.join(root, "org", "project", "file.pdf"));

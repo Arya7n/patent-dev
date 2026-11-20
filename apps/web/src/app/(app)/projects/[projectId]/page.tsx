@@ -61,6 +61,9 @@ export default function ProjectOverview({ params }: { params: Promise<{ projectI
           </li>
         ))}
       </ol>
+      {documents.data && docs.length === 0 ? (
+        <p className="mt-8 max-w-xl text-sm text-stone-500">No documents uploaded yet.</p>
+      ) : null}
       <ul className="mt-8 grid max-w-xl gap-2 text-sm">
         {docs.map((document) => (
           <li key={document.id} className="flex justify-between gap-3 rounded-2xl border border-line bg-panel px-4 py-3 shadow-sm">

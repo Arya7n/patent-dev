@@ -5,6 +5,7 @@ import {
   type ClaimElementType,
   type EvidenceRelationship,
 } from "./domain";
+import { ensureAnalystCommentary, filterPhraseAlignments, preferPassageQuote } from "./quality";
 
 export const bboxSchema = z.object({
   x: z.number(),
@@ -120,6 +121,7 @@ function clamp01(value: number): number {
 export function normalizeEvidenceAssessment(
   input: unknown,
   fallbackPage: number,
+  options?: { claimText?: string; passageText?: string; rowLabel?: string },
 ): z.SafeParseReturnType<unknown, EvidenceAssessment> {
   const loose = z
     .object({
@@ -142,13 +144,16 @@ export function normalizeEvidenceAssessment(
     .safeParse(input);
   if (!loose.success) return loose;
 
-  const relationship =
+  let relationship =
     relationshipAliases[loose.data.relationship ?? ""] ?? "needs_review";
   const page = loose.data.sourcePage;
   const reasoning =
     loose.data.reasoning?.trim() ||
     "The model did not provide an explanation. Analyst review required.";
-  const alignments = (loose.data.alignments ?? []).flatMap((item, index) => {
+  const passage = options?.passageText?.trim() ?? "";
+  const modelQuote = loose.data.evidenceText?.trim() ?? "";
+  const evidenceText = preferPassageQuote(modelQuote, passage || modelQuote);
+  const rawAlignments = (loose.data.alignments ?? []).flatMap((item, index) => {
     const claimPhrase = item.claimPhrase?.trim() ?? "";
     const sourcePhrase = item.sourcePhrase?.trim() ?? "";
     if (!claimPhrase || !sourcePhrase) return [];
@@ -156,12 +161,25 @@ export function normalizeEvidenceAssessment(
     const color = alignmentColorSet.has(raw) ? raw : ALIGNMENT_COLORS[index % ALIGNMENT_COLORS.length];
     return [{ claimPhrase, sourcePhrase, color }];
   });
+  const alignments = filterPhraseAlignments(options?.claimText ?? "", evidenceText, rawAlignments);
+  let confidence = clamp01(loose.data.confidence ?? 0);
+  if (options?.claimText && relationship === "strong_match" && alignments.length === 0) {
+    relationship = "needs_review";
+    confidence = Math.min(confidence, 0.45);
+  }
+  if (relationship === "no_evidence") {
+    confidence = 0;
+  }
+  const commentary = ensureAnalystCommentary(
+    loose.data.commentary?.trim() || reasoning,
+    options?.rowLabel ?? "this clause",
+  );
   return evidenceAssessmentSchema.safeParse({
     relationship,
-    confidence: clamp01(loose.data.confidence ?? 0),
+    confidence,
     reasoning,
-    commentary: loose.data.commentary?.trim() || reasoning,
-    evidenceText: loose.data.evidenceText?.trim() ?? "",
+    commentary,
+    evidenceText,
     sourcePage: page && page > 0 ? Math.round(page) : fallbackPage,
     alignments,
   });

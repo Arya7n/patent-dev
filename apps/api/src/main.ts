@@ -10,6 +10,7 @@ import { parseRuntimeEnv } from "@patent/pipeline";
 async function bootstrap() {
   const env = parseRuntimeEnv(process.env);
   const app = await NestFactory.create(AppModule);
+  app.enableShutdownHooks();
   app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: "cross-origin" } }));
   app.use(cookieParser());
   app.enableCors({

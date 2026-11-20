@@ -26,7 +26,11 @@ function databaseHostname(databaseUrl: string): string {
 }
 
 export function createDb(databaseUrl: string): { db: Database; sql: postgres.Sql } {
-  const sql = postgres(databaseUrl, postgresOptions(databaseUrl, 10));
+  const sql = postgres(databaseUrl, {
+    ...postgresOptions(databaseUrl, 10),
+    idle_timeout: 20,
+    connect_timeout: 10,
+  });
   const db = drizzle(sql, { schema });
   return { db, sql };
 }

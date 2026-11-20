@@ -7,6 +7,7 @@ import { use } from "react";
 import { HighlightedText } from "@/components/highlighted-text";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/lib/jobs";
+import { clauseLabel } from "@/lib/labels";
 import { STATUS_CLASS, type ClaimChart } from "@/lib/types";
 
 type Evidence = ClaimChart["cells"][number]["evidence"][number];
@@ -28,23 +29,62 @@ export default function ClaimChartPage({ params }: { params: Promise<{ projectId
           <h1 className="mt-2 font-serif text-4xl">Claim chart</h1>
           <p className="mt-2 max-w-3xl text-sm text-stone-600">{data?.disclaimer}</p>
         </div>
-        <Link href={`/projects/${projectId}/reports`} className="rounded bg-pine px-4 py-2 text-sm text-white">
+        <Link
+          href={`/projects/${projectId}/reports`}
+          aria-disabled={!data || data.elements.length === 0}
+          className={`rounded bg-pine px-4 py-2 text-sm text-white ${!data || data.elements.length === 0 ? "pointer-events-none opacity-50" : ""}`}
+        >
           Export report
         </Link>
       </div>
       {chart.isError ? <p className="mt-4 text-sm text-rose-800">{errorMessage(chart.error, "The claim chart could not be loaded.")}</p> : null}
+      {data ? (
+        <ol className="mt-6 grid gap-2 rounded-2xl border border-line bg-[#fffcf7] p-4 text-sm text-stone-700 sm:grid-cols-4">
+          <li className={data.targetTitle ? "text-pine" : ""}>
+            <span className="font-medium">1. Target patent</span>
+            <p className="mt-1 text-xs text-stone-500">{data.targetTitle ? data.targetTitle : "Process the target PDF on Documents."}</p>
+          </li>
+          <li className={data.elements.length > 0 ? "text-pine" : ""}>
+            <span className="font-medium">2. Claim rows</span>
+            <p className="mt-1 text-xs text-stone-500">
+              {data.elements.length > 0
+                ? `${data.elements.length} clause row${data.elements.length === 1 ? "" : "s"} ready.`
+                : "Decompose a claim on Claims."}
+            </p>
+          </li>
+          <li className={data.priorArt.length > 0 ? "text-pine" : ""}>
+            <span className="font-medium">3. References</span>
+            <p className="mt-1 text-xs text-stone-500">
+              {data.priorArt.length > 0
+                ? `${data.priorArt.length} reference${data.priorArt.length === 1 ? "" : "s"} processed.`
+                : "Upload and process prior-art or standards PDFs."}
+            </p>
+          </li>
+          <li className={data.cells.length > 0 ? "text-pine" : ""}>
+            <span className="font-medium">4. Mapping</span>
+            <p className="mt-1 text-xs text-stone-500">
+              {data.cells.length > 0
+                ? "Search finished. Review highlights, then export."
+                : "Run Search all elements on Claims."}
+            </p>
+          </li>
+        </ol>
+      ) : null}
       {data && data.elements.length === 0 ? (
-        <p className="mt-6 text-sm text-stone-500">Decompose at least one claim before this chart has rows.</p>
+        <p className="mt-4 max-w-3xl text-sm text-stone-500">
+          This page becomes a professional Claims | Mapping chart after those steps. The export mirrors that layout, with color-matched phrases and an analyst ending line on each row.
+        </p>
       ) : null}
       {data ? (
         <section className="mt-6 overflow-hidden rounded-2xl border border-line bg-white shadow-sm">
           <header className="grid gap-4 border-b border-line p-4 md:grid-cols-2">
             <div>
-              <p className="text-xs uppercase tracking-wide text-stone-500">Patent / matter</p>
+              <p className="text-xs uppercase tracking-wide text-stone-500">Patent Number</p>
               <p className="mt-1 font-medium text-[#0070C0]">{data.targetTitle || data.projectName}</p>
+              <p className="mt-1 text-sm text-stone-500">{data.projectName}</p>
             </div>
             <div>
-              <p className="text-xs uppercase tracking-wide text-stone-500">References</p>
+              <p className="text-xs uppercase tracking-wide text-stone-500">Standards / references</p>
               {data.priorArt.length === 0 ? <p className="mt-1 text-sm text-stone-500">Process a prior-art or reference PDF to fill the mapping column.</p> : null}
               <ol className="mt-1 list-decimal pl-5 text-sm">
                 {data.priorArt.map((document) => (
@@ -64,15 +104,13 @@ export default function ClaimChartPage({ params }: { params: Promise<{ projectId
               <tbody>
                 {claimNumbers.map((claimNumber) => {
                   const elements = (data.elements ?? []).filter((element) => element.claimNumber === claimNumber);
-                  const preamble = isPreamble(elements[0]?.text ?? "");
+                  const firstText = elements[0]?.text ?? "";
                   return (
                     <Fragment key={claimNumber}>
                       {elements.map((element, index) => (
                         <tr key={element.id}>
                           <td className="border border-line p-3 align-top">
-                            <p className="font-medium text-[#0070C0]">
-                              {preamble && index === 0 ? `Claim ${claimNumber}` : `Clause ${preamble ? index : index + 1}`}
-                            </p>
+                            <p className="font-medium text-[#0070C0]">{clauseLabel(claimNumber, index, firstText)}</p>
                             <p className="mt-2 leading-6">
                               <HighlightedText
                                 text={element.text}
@@ -101,7 +139,8 @@ export default function ClaimChartPage({ params }: { params: Promise<{ projectId
                                           <HighlightedText text={evidence.text} alignments={evidence.alignments ?? []} field="sourcePhrase" />
                                         </p>
                                         <p className="mt-1 text-xs text-stone-500">Page {evidence.pageNumber}</p>
-                                        <p className="mt-2 text-stone-700">{evidence.explanation}</p>
+                                        <p className="mt-3 text-xs font-medium uppercase tracking-wide text-[#0070C0]">Analyst comment</p>
+                                        <p className="mt-1 text-stone-700">{evidence.explanation}</p>
                                         {evidence.analystNote ? <p className="mt-2 text-xs">Analyst note: {evidence.analystNote}</p> : null}
                                       </>
                                     ) : (
@@ -124,12 +163,6 @@ export default function ClaimChartPage({ params }: { params: Promise<{ projectId
       ) : null}
     </main>
   );
-}
-
-function isPreamble(text: string): boolean {
-  const trimmed = text.trim();
-  if (/^(receiving|camping|determining|transmitting|performing|sending|selecting|monitoring|applying)\b/i.test(trimmed)) return false;
-  return /comprising|processing means|storage unit|program code/i.test(trimmed);
 }
 
 function bestEvidence(chart: ClaimChart, elementId: string, documentId: string): Evidence | null {

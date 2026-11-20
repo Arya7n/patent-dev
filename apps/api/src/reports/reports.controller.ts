@@ -1,7 +1,7 @@
 import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, StreamableFile } from "@nestjs/common";
 import { ApiCookieAuth, ApiProperty, ApiTags } from "@nestjs/swagger";
-import { IsString, MinLength } from "class-validator";
-import { eq } from "drizzle-orm";
+import { IsString, MaxLength, MinLength } from "class-validator";
+import { desc, eq } from "drizzle-orm";
 import { reports } from "@patent/db";
 import { safeFilename } from "@patent/shared";
 import { AccessService } from "../access/access.service";
@@ -14,6 +14,7 @@ class CreateReportDto {
   @ApiProperty()
   @IsString()
   @MinLength(1)
+  @MaxLength(200)
   title!: string;
 }
 
@@ -62,7 +63,11 @@ export class ReportsController {
   @Get("projects/:id/reports")
   async list(@CurrentUser() user: AuthUser, @Param("id", ParseUUIDPipe) projectId: string) {
     await this.access.project(user.id, projectId, "read");
-    return this.context.db.select().from(reports).where(eq(reports.projectId, projectId));
+    return this.context.db
+      .select()
+      .from(reports)
+      .where(eq(reports.projectId, projectId))
+      .orderBy(desc(reports.createdAt));
   }
 
   @Get("reports/:id")

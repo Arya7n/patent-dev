@@ -12,6 +12,7 @@ export const metadata: Metadata = {
     template: "%s · Patent desk",
   },
   description: "Analyst workspace for patent research and claim charts",
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

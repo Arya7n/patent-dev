@@ -72,6 +72,7 @@ describe("model failures", () => {
 describe("slugify", () => {
   it("builds a url-safe organization slug", () => {
     expect(slugify("Acme Patent Lab")).toBe("acme-patent-lab");
+    expect(slugify("Café -- Research")).toBe("cafe-research");
     expect(slugify("!!!")).toBe("org");
   });
 });

@@ -19,7 +19,7 @@ export class SystemController {
   @Public()
   @Get("health")
   health() {
-    return { ok: true };
+    return { ok: true, uptimeSeconds: Math.round(process.uptime()) };
   }
 
   @ApiCookieAuth()

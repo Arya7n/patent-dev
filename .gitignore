@@ -40,6 +40,7 @@ Thumbs.db
 # Local data
 uploads/
 tmp/
+tmp-*
 .cache/
 data/postgres/
 data/redis/

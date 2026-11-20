@@ -95,10 +95,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
               type="button"
               className="text-xs text-stone-400 hover:text-white"
               onClick={() => {
-                void api("/auth/logout", { method: "POST" }).finally(() => {
-                  queryClient.clear();
-                  router.push("/login");
-                });
+                void api("/auth/logout", { method: "POST" })
+                  .catch(() => undefined)
+                  .finally(() => {
+                    queryClient.clear();
+                    router.push("/login");
+                  });
               }}
             >
               Sign out

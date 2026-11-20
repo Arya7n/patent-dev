@@ -59,3 +59,8 @@ a.border-line:hover {
 .react-pdf__Page {
   position: relative;
 }
+
+mark {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}

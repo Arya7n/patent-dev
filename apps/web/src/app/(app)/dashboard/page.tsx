@@ -33,7 +33,11 @@ export default function DashboardPage() {
         <h2 className="font-serif text-2xl">Recent projects</h2>
         <Link href="/projects" className="text-sm underline">All projects</Link>
       </div>
-      {projects.data?.length === 0 ? <p className="mt-4 text-sm text-stone-500">Create a project to start a matter.</p> : null}
+      {projects.data?.length === 0 ? (
+        <p className="mt-4 text-sm text-stone-500">
+          <Link href="/projects" className="underline">Create a project</Link> to start a matter.
+        </p>
+      ) : null}
       <ul className="mt-4 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-panel shadow-sm">
         {(projects.data ?? []).slice(0, 6).map((project) => (
           <li key={project.id}>

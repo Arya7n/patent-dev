@@ -45,7 +45,7 @@ worker.on("failed", (job, error) => {
 });
 
 worker.on("error", (error) => {
-  console.error(JSON.stringify({ level: "error", message: error.message }));
+  console.error(JSON.stringify({ level: "error", status: "worker_error", message: error.message }));
 });
 
 let stopping = false;

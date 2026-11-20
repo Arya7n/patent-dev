@@ -23,7 +23,7 @@ const result = spawnSync("docker", ["compose", ...process.argv.slice(2)], {
 });
 
 if (result.error) {
-  console.error(`Could not run docker: ${result.error.message}`);
+  console.error(`Could not run docker: ${result.error.message}. Start Docker Desktop and try again.`);
   process.exit(1);
 }
 

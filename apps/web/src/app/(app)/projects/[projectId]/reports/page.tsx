@@ -83,7 +83,7 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                     setDownloading(`${report.id}:docx`);
                     setError(null);
                     void apiBlob(`/reports/${report.id}/download?format=docx`)
-                      .then((blob) => downloadBlob(blob, `${report.title}.docx`))
+                      .then((blob) => downloadBlob(blob, `${fileStem(report.title)}.docx`))
                       .catch((reason: unknown) => setError(errorMessage(reason, "DOCX download failed")))
                       .finally(() => setDownloading(null));
                   }}
@@ -97,7 +97,7 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
                     setDownloading(`${report.id}:pdf`);
                     setError(null);
                     void apiBlob(`/reports/${report.id}/download?format=pdf`)
-                      .then((blob) => downloadBlob(blob, `${report.title}.pdf`))
+                      .then((blob) => downloadBlob(blob, `${fileStem(report.title)}.pdf`))
                       .catch((reason: unknown) => setError(errorMessage(reason, "PDF download failed")))
                       .finally(() => setDownloading(null));
                   }}
@@ -111,4 +111,8 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
       </ul>
     </main>
   );
+}
+
+function fileStem(title: string): string {
+  return title.replace(/[\\/:*?"<>|]+/g, "-").replace(/\s+/g, " ").trim() || "Claim chart";
 }
