@@ -49,3 +49,4 @@ data/minio/
 *.pdf.download
 playwright-report/
 test-results/
+.neon
