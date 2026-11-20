@@ -1,4 +1,4 @@
-import { Controller, Get, Param, ParseUUIDPipe } from "@nestjs/common";
+import { Controller, Get, NotFoundException, Param, ParseUUIDPipe } from "@nestjs/common";
 import { ApiCookieAuth, ApiTags } from "@nestjs/swagger";
 import { count, eq, sql } from "drizzle-orm";
 import { aiUsage, documents, processingJobs } from "@patent/db";
@@ -65,7 +65,7 @@ export class SystemController {
   @Get("jobs/:id")
   async job(@CurrentUser() user: AuthUser, @Param("id", ParseUUIDPipe) id: string) {
     const [job] = await this.context.db.select().from(processingJobs).where(eq(processingJobs.id, id)).limit(1);
-    if (!job) return null;
+    if (!job) throw new NotFoundException("Job not found");
     await this.access.project(user.id, job.projectId, "read");
     return job;
   }
