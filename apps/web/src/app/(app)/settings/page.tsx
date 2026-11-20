@@ -31,6 +31,7 @@ export default function SettingsPage() {
       <h1 className="mt-2 font-serif text-4xl">Settings</h1>
       <p className="mt-2 max-w-xl text-sm leading-6 text-stone-600">Provider status only. Secrets stay on the API and are never sent to the browser.</p>
       {runtime.isError ? <p className="mt-4 text-sm text-rose-800">{errorMessage(runtime.error, "Runtime status could not be loaded.")}</p> : null}
+      {usage.isError ? <p className="mt-4 text-sm text-rose-800">{errorMessage(usage.error, "Usage could not be loaded.")}</p> : null}
       <dl className="mt-6 grid max-w-lg gap-3 rounded-2xl border border-line bg-panel p-5 text-sm shadow-sm">
         <Row label="Requested AI provider" value={data?.aiProvider} />
         <Row label="Active AI provider" value={data?.activeAiProvider} />
@@ -42,6 +43,7 @@ export default function SettingsPage() {
         <Row label="Input tokens" value={usage.data ? String(usage.data.inputTokens) : undefined} />
         <Row label="Output tokens" value={usage.data ? String(usage.data.outputTokens) : undefined} />
         <Row label="Estimated cost" value={usage.data ? `$${Number(usage.data.estimatedCostUsd).toFixed(4)}` : undefined} />
+        <Row label="Documents" value={usage.data ? String(usage.data.documents) : undefined} />
       </dl>
       {data && !data.aiConfigured ? (
         <p className="mt-4 max-w-lg text-sm text-amber-800">
