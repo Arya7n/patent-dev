@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, api } from "@/lib/api";
 import type { Profile } from "@/lib/types";
 
@@ -16,6 +16,7 @@ const links = [
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const profile = useQuery({
     queryKey: ["me"],
     queryFn: () => api<Profile>("/auth/me"),
@@ -75,6 +76,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 <Link
                   key={href}
                   href={href}
+                  aria-current={active ? "page" : undefined}
                   className={`rounded-xl px-3 py-2 ${active ? "bg-white/10 text-white" : "text-stone-300 hover:bg-white/5"}`}
                 >
                   <span className="block text-sm">{label}</span>
@@ -90,9 +92,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <span className="block truncate text-[11px] text-stone-500">{profile.data?.organization?.name}</span>
             </span>
             <button
+              type="button"
               className="text-xs text-stone-400 hover:text-white"
               onClick={() => {
-                void api("/auth/logout", { method: "POST" }).then(() => router.push("/login"));
+                void api("/auth/logout", { method: "POST" }).finally(() => {
+                  queryClient.clear();
+                  router.push("/login");
+                });
               }}
             >
               Sign out
@@ -120,6 +126,7 @@ export function ProjectNav({ projectId }: { projectId: string }) {
         <Link
           key={href}
           href={href}
+          aria-current={pathname === href ? "page" : undefined}
           className={`shrink-0 rounded-full px-3 py-1.5 text-sm ${pathname === href ? "bg-[#1f4b3a] text-white shadow-sm" : "text-stone-600 hover:bg-stone-100"}`}
         >
           {label}
