@@ -7,7 +7,10 @@ const sans = Source_Sans_3({ subsets: ["latin"], variable: "--font-sans" });
 const serif = Source_Serif_4({ subsets: ["latin"], variable: "--font-serif" });
 
 export const metadata: Metadata = {
-  title: "Patent desk",
+  title: {
+    default: "Patent desk",
+    template: "%s · Patent desk",
+  },
   description: "Analyst workspace for patent research and claim charts",
 };
 
