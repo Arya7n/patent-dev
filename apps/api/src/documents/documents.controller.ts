@@ -57,6 +57,7 @@ export class DocumentsController {
     @UploadedFile() file?: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException("A PDF file is required");
+    if (file.size === 0) throw new BadRequestException("The PDF is empty");
     if (file.mimetype !== "application/pdf" && !file.originalname.toLowerCase().endsWith(".pdf")) {
       throw new BadRequestException("Only PDF files can be uploaded");
     }
