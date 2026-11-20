@@ -9,11 +9,13 @@ services:
       - "5432:5432"
     volumes:
       - patent_pg:/var/lib/postgresql/data
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U patent -d patent"]
       interval: 5s
       timeout: 5s
       retries: 20
+      start_period: 10s
 
   # BullMQ needs Redis 5+. Port 6380 avoids an older Redis that may already
   # own 6379. REDIS_URL should be redis://localhost:6380.
@@ -21,11 +23,13 @@ services:
     image: redis:7-alpine
     ports:
       - "6380:6379"
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 3s
       retries: 20
+      start_period: 5s
 
 volumes:
   patent_pg:
