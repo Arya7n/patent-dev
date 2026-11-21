@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -223,14 +224,14 @@ export class ClaimsController {
 
   private async loadClaim(userId: string, id: string, mode: "read" | "edit") {
     const [claim] = await this.context.db.select().from(claims).where(eq(claims.id, id)).limit(1);
-    if (!claim) throw new BadRequestException("Claim not found");
+    if (!claim) throw new NotFoundException("Claim not found");
     await this.access.project(userId, claim.projectId, mode);
     return claim;
   }
 
   private async loadElement(userId: string, id: string) {
     const [element] = await this.context.db.select().from(claimElements).where(eq(claimElements.id, id)).limit(1);
-    if (!element) throw new BadRequestException("Element not found");
+    if (!element) throw new NotFoundException("Element not found");
     await this.loadClaim(userId, element.claimId, "edit");
     return element;
   }

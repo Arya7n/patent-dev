@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post } from "@nestjs/common";
+import { Body, Controller, Get, NotFoundException, Param, ParseUUIDPipe, Patch, Post } from "@nestjs/common";
 import { ApiCookieAuth, ApiProperty, ApiPropertyOptional, ApiTags } from "@nestjs/swagger";
 import { IsIn, IsOptional, IsString, MinLength } from "class-validator";
 import { eq } from "drizzle-orm";
@@ -93,7 +93,7 @@ export class EvidenceController {
       .from(claimElementEvidence)
       .where(eq(claimElementEvidence.id, id))
       .limit(1);
-    if (!link) throw new BadRequestException("Evidence mapping not found");
+    if (!link) throw new NotFoundException("Evidence mapping not found");
     const loaded = await this.loadElement(user.id, link.claimElementId);
     const [updated] = await this.context.db
       .update(claimElementEvidence)
@@ -197,9 +197,9 @@ export class EvidenceController {
 
   private async loadElement(userId: string, elementId: string, mode: "read" | "edit" = "edit") {
     const [element] = await this.context.db.select().from(claimElements).where(eq(claimElements.id, elementId)).limit(1);
-    if (!element) throw new BadRequestException("Claim element not found");
+    if (!element) throw new NotFoundException("Claim element not found");
     const [claim] = await this.context.db.select().from(claims).where(eq(claims.id, element.claimId)).limit(1);
-    if (!claim) throw new BadRequestException("Claim not found");
+    if (!claim) throw new NotFoundException("Claim not found");
     const { project } = await this.access.project(userId, claim.projectId, mode);
     return { element, claim, projectId: claim.projectId, organizationId: project.organizationId };
   }
