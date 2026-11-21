@@ -13,6 +13,9 @@ export class JobsService implements OnModuleDestroy {
 
   constructor(private readonly context: ContextService) {
     this.connection = new IORedis(this.context.env.REDIS_URL, { maxRetriesPerRequest: null });
+    this.connection.on("error", (error: Error) => {
+      console.error(JSON.stringify({ level: "error", status: "redis_error", message: error.message }));
+    });
     this.queue = new Queue(JOB_QUEUE, { connection: this.connection });
   }
 
