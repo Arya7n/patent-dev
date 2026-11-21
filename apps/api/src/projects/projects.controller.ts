@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Post } from "@nestjs/common";
 import { ApiCookieAuth, ApiTags } from "@nestjs/swagger";
+import { Transform } from "class-transformer";
 import { IsOptional, IsString, MaxLength, MinLength } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { desc, eq } from "drizzle-orm";
@@ -11,6 +12,7 @@ import { ContextService } from "../context/context.service";
 
 class CreateProjectDto {
   @ApiProperty()
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
   @IsString()
   @MinLength(1)
   @MaxLength(200)
@@ -18,6 +20,7 @@ class CreateProjectDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @Transform(({ value }) => (typeof value === "string" ? value.trim() : value))
   @IsString()
   @MaxLength(1000)
   description?: string;
