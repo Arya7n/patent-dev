@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Post, Query, StreamableFile } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, NotFoundException, Param, ParseUUIDPipe, Post, Query, StreamableFile } from "@nestjs/common";
 import { ApiCookieAuth, ApiProperty, ApiTags } from "@nestjs/swagger";
 import { IsString, MaxLength, MinLength } from "class-validator";
 import { desc, eq } from "drizzle-orm";
@@ -95,7 +95,7 @@ export class ReportsController {
 
   private async load(userId: string, id: string) {
     const [report] = await this.context.db.select().from(reports).where(eq(reports.id, id)).limit(1);
-    if (!report) throw new BadRequestException("Report not found");
+    if (!report) throw new NotFoundException("Report not found");
     await this.access.project(userId, report.projectId, "read");
     return report;
   }
