@@ -53,7 +53,15 @@ export default function ReportsPage({ params }: { params: Promise<{ projectId: s
           create.mutate(title, { onSuccess: () => form.reset() });
         }}
       >
-        <input name="title" placeholder="Report title" className="w-72 rounded border border-line bg-panel px-3 py-2 text-sm" />
+        <label className="text-sm">
+          Title
+          <input
+            name="title"
+            maxLength={200}
+            placeholder="Claim chart"
+            className="mt-1 block w-72 rounded border border-line bg-panel px-3 py-2 text-sm"
+          />
+        </label>
         <button disabled={create.isPending} className="rounded bg-pine px-4 py-2 text-sm text-white">
           {create.isPending ? "Generating…" : "Generate report"}
         </button>
