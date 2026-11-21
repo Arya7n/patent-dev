@@ -62,6 +62,8 @@ export class DocumentsController {
     if (file.mimetype !== "application/pdf" && !file.originalname.toLowerCase().endsWith(".pdf")) {
       throw new BadRequestException("Only PDF files can be uploaded");
     }
+    const header = file.buffer?.subarray(0, 5).toString("latin1") ?? "";
+    if (!header.startsWith("%PDF-")) throw new BadRequestException("The file is not a PDF");
     if (file.size > this.context.env.MAX_UPLOAD_BYTES) {
       throw new BadRequestException("File exceeds the upload limit");
     }
