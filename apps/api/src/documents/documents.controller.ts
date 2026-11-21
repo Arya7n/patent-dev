@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  NotFoundException,
   Param,
   ParseUUIDPipe,
   Post,
@@ -176,7 +177,7 @@ export class DocumentsController {
     @Query("sig") sig?: string,
   ) {
     const [document] = await this.context.db.select().from(documents).where(eq(documents.id, id)).limit(1);
-    if (!document) throw new BadRequestException("Document not found");
+    if (!document) throw new NotFoundException("Document not found");
     const expiry = Number(expires);
     const signed = sig ? verifyDownload(this.context.env.AUTH_SECRET, document.storageKey, expiry, sig, Date.now()) : false;
     if (!signed) {
@@ -197,14 +198,14 @@ export class DocumentsController {
 
   private async loadReadable(userId: string, id: string) {
     const [document] = await this.context.db.select().from(documents).where(eq(documents.id, id)).limit(1);
-    if (!document) throw new BadRequestException("Document not found");
+    if (!document) throw new NotFoundException("Document not found");
     await this.access.project(userId, document.projectId, "read");
     return document;
   }
 
   private async loadEditable(userId: string, id: string) {
     const [document] = await this.context.db.select().from(documents).where(eq(documents.id, id)).limit(1);
-    if (!document) throw new BadRequestException("Document not found");
+    if (!document) throw new NotFoundException("Document not found");
     await this.access.project(userId, document.projectId, "edit");
     return document;
   }
